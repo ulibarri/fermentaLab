@@ -1,0 +1,89 @@
+<div class="modal fade" id="modalProduct" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <form id="productForm">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title" id="modalTitle">
+                        Nuevo Producto
+                    </h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <input type="hidden" id="productId" name="productId">
+
+                    <div class="mb-3">
+
+                        <label for="name" class="form-label">
+                            Nombre
+                        </label>
+
+                        <input id="name" name="name" class="form-control" required>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="categoryId" class="form-label">
+                            Categoría
+                        </label>
+
+                        <select id="categoryId" name="categoryId" class="form-select">
+
+                            <option value="CAT-001">
+                                Tepache
+                            </option>
+
+                            <option value="CAT-002">
+                                Kombucha
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="description" class="form-label">
+                            Descripción
+                        </label>
+
+                        <textarea id="description" name="description" class="form-control" rows="3">
+                        </textarea>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+
+                        Cancelar
+
+                    </button>
+
+                    <button type="submit" class="btn btn-success">
+
+                        Guardar
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>

@@ -1,0 +1,86 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h1 class="mb-0">Productos</h1>
+            <small class="text-muted">
+                Catálogo de productos FermentaLab
+            </small>
+        </div>
+
+        <button id="btnNuevo" class="btn btn-primary">
+
+            <i class="bi bi-plus-circle"></i>
+
+            Nuevo Producto
+
+        </button>
+
+    </div>
+    <div id="loader" class="alert alert-info" style="display:none;">
+
+        Cargando información...
+
+    </div>
+
+    <% if (products && products.length> 0) { %>
+
+        <table id="tblProducts" class="table table-striped table-hover">
+
+            <thead class="table-dark">
+
+                <tr>
+
+                    <th>Código</th>
+
+                    <th>Nombre</th>
+
+                    <th>Categoría</th>
+
+                    <th>Activo</th>
+
+                    <th width="180">
+                        Acciones
+                    </th>
+
+                </tr>
+
+            </thead>
+            <tbody id="productsTableBody">
+
+            </tbody>
+
+
+        </table>
+
+        <% } else { %>
+
+            <div class="alert alert-warning">
+
+                No existen productos registrados.
+
+            </div>
+
+            <% } %>
+
+</div>
+
+<%- include("form") %>
+
+
+
+
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+    <script src="/js/crud/CrudTable.js"></script>
+
+    <script src="/js/crud/CrudPage.js"></script>
+    <script src="/js/crud/CrudForm.js"></script>
+    <script src="/js/crud/CrudApi.js"></script>
+
+
+    <script src="/js/products/productApi.js"></script>
+    <script src="/js/products/productForm.js"></script>
+    <script src="/js/products/products.js"></script>
