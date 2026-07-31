@@ -1,25 +1,4 @@
-// const ProductService =
-//     require("../services/ProductService");
 
-// const service =
-//     new ProductService();
-
-// exports.index = async (req, res) => {
-
-//     const products =
-//         await service.getAll();
-
-//     res.render("products/index", {
-
-//         title: "Productos",
-
-//         page: "products",
-
-//         products
-
-//     });
-
-// };
 const ProductService = require("../services/ProductService");
 
 const service = new ProductService();

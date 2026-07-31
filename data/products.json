@@ -1,0 +1,151 @@
+[
+    {
+        "id": "PROD-001",
+        "createdAt": "2026-07-31T00:02:06.653Z",
+        "updatedAt": "2026-07-31T00:02:06.654Z",
+        "active": true,
+        "deleted": false,
+        "code": "",
+        "name": "Tradicional",
+        "categoryId": "CAT-001",
+        "description": "el tradicional"
+    },
+    {
+        "id": "PROD-002",
+        "categoryId": "CAT-001",
+        "name": "Citrus",
+        "description": "",
+        "active": true
+    },
+    {
+        "id": "PROD-003",
+        "categoryId": "CAT-001",
+        "name": "Tamarindo",
+        "description": "",
+        "active": true
+    },
+    {
+        "id": "PROD-004",
+        "createdAt": "2026-07-31T08:08:21.571Z",
+        "updatedAt": "2026-07-31T08:09:05.832Z",
+        "active": true,
+        "deleted": false,
+        "code": "",
+        "name": "Kombucha Tradicional",
+        "categoryId": "CAT-002",
+        "description": "sin sabor extra"
+    },
+    {
+        "id": "PROD-005",
+        "categoryId": "CAT-002",
+        "name": "Jamaica",
+        "description": "",
+        "active": true
+    },
+    {
+        "id": "PROD-006",
+        "categoryId": "CAT-002",
+        "name": "Frutos Rojos",
+        "description": "",
+        "active": true
+    },
+    {
+        "id": "PROD-007",
+        "createdAt": "2026-07-20T06:38:21.077Z",
+        "updatedAt": "2026-07-21T00:01:32.533Z",
+        "active": false,
+        "deleted": true,
+        "code": "",
+        "name": "Piña Habanero Extra",
+        "categoryId": "CAT-001",
+        "description": "Versión mejorada"
+    },
+    {
+        "id": "PROD-008",
+        "createdAt": "2026-07-22T09:26:11.728Z",
+        "updatedAt": "2026-07-22T09:26:11.728Z",
+        "active": true,
+        "deleted": false,
+        "code": "",
+        "name": "Piña Mango",
+        "categoryId": "CAT-001",
+        "description": "tepache con piña y mango"
+    },
+    {
+        "id": "PROD-009",
+        "createdAt": "2026-07-23T06:40:21.134Z",
+        "updatedAt": "2026-07-31T08:09:15.499Z",
+        "active": false,
+        "deleted": true,
+        "code": "",
+        "name": "Tepache Tropical",
+        "categoryId": "CAT-001",
+        "description": "toque de coco y yaka"
+    },
+    {
+        "id": "PROD-010",
+        "createdAt": "2026-07-30T00:27:15.142Z",
+        "updatedAt": "2026-07-30T00:27:15.142Z",
+        "active": true,
+        "deleted": false,
+        "code": "",
+        "name": "Tepache Guayaba",
+        "categoryId": "CAT-001",
+        "description": "guayabas"
+    },
+    {
+        "id": "PROD-011",
+        "createdAt": "2026-07-30T23:21:29.905Z",
+        "updatedAt": "2026-07-31T00:02:17.485Z",
+        "active": false,
+        "deleted": true,
+        "code": "",
+        "name": "Tepache frambuesa",
+        "categoryId": "CAT-001",
+        "description": "tepache con frambuesa"
+    },
+    {
+        "id": "PROD-012",
+        "createdAt": "2026-07-31T00:39:15.547Z",
+        "updatedAt": "2026-07-31T00:39:33.227Z",
+        "active": false,
+        "deleted": true,
+        "code": "",
+        "name": "tepache temporal",
+        "categoryId": "CAT-001",
+        "description": "                      no temporal"
+    },
+    {
+        "id": "PROD-013",
+        "createdAt": "2026-07-31T06:58:20.947Z",
+        "updatedAt": "2026-07-31T06:58:42.062Z",
+        "active": false,
+        "deleted": true,
+        "code": "",
+        "name": "Tepache vainilla",
+        "categoryId": "CAT-001",
+        "description": "                        tiene poca vainilla"
+    },
+    {
+        "id": "PROD-014",
+        "createdAt": "2026-07-31T07:28:05.148Z",
+        "updatedAt": "2026-07-31T07:28:24.812Z",
+        "active": false,
+        "deleted": true,
+        "code": "",
+        "name": "Tepache guanabana",
+        "categoryId": "CAT-001",
+        "description": "                        con guanabana"
+    },
+    {
+        "id": "PROD-015",
+        "createdAt": "2026-07-31T07:55:46.764Z",
+        "updatedAt": "2026-07-31T07:56:09.893Z",
+        "active": false,
+        "deleted": true,
+        "code": "",
+        "name": "tepache fuerte",
+        "categoryId": "CAT-001",
+        "description": "                        con mas alcohol"
+    }
+]

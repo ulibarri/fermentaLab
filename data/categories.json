@@ -1,0 +1,12 @@
+[
+    {
+        "id": "CAT-001",
+        "name": "Tepache",
+        "active": true
+    },
+    {
+        "id": "CAT-002",
+        "name": "Kombucha",
+        "active": true
+    }
+]

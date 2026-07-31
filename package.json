@@ -16,6 +16,7 @@
     "bootstrap-icons": "^1.13.1",
     "chart.js": "^4.5.1",
     "compression": "^1.8.1",
+    "dayjs": "^1.11.21",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
@@ -24,7 +25,9 @@
     "helmet": "^8.3.0",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
-    "uuid": "^14.0.1"
+    "sweetalert2": "^11.26.25",
+    "uuid": "^14.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
