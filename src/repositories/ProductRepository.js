@@ -1,28 +1,3 @@
-// const BaseRepository = require("./BaseRepository");
-// const db = require("../config/DataContext");
-
-// class ProductRepository extends BaseRepository {
-
-//     constructor() {
-
-//         super(db.products);
-
-//     }
-
-//     async findActive() {
-
-//         const products =
-//             await this.findAll();
-
-//         return products.filter(
-//             p => p.active
-//         );
-
-//     }
-
-// }
-
-// module.exports = ProductRepository;
 const BaseRepository = require("./BaseRepository");
 
 const db = require("../config/DataContext");

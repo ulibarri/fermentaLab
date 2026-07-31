@@ -9,9 +9,6 @@ exports.index = async (req, res, next) => {
 
         const products = await service.getAll();
 
-        // console.log(products);
-        // console.log(products.length);
-
         res.render("products/index", {
 
             title: "Productos",

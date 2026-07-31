@@ -6,28 +6,6 @@ class JsonRepository {
 
     static writeQueue = Promise.resolve();
 
-    // constructor(fileName) {
-
-    //     this.filePath = path.join(
-    //         process.cwd(),
-    //         "data",
-    //         fileName
-    //     );
-
-    // }
-    // constructor(fileName) {
-
-    //     console.log("process.cwd():", process.cwd());
-
-    //     this.filePath = path.join(
-    //         process.cwd(),
-    //         "data",
-    //         fileName
-    //     );
-
-    //     console.log("Ruta JSON:", this.filePath);
-
-    // }
     constructor(fileName) {
 
         this.filePath = path.join(
@@ -82,16 +60,6 @@ class JsonRepository {
 
     }
 
-    // async findById(id) {
-
-    //     const data =
-    //         await this.readFile();
-
-    //     return data.find(
-    //         x => x.id === id
-    //     );
-
-    // }
     async findById(id) {
 
         const data = await this.readFile();

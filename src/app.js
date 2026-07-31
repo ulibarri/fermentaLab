@@ -14,7 +14,6 @@ const productApiRoutes = require("./routes/api/products");
 
 const app = express();
 
-// app.use(express.static("public"));
 // Middlewares
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -27,37 +26,6 @@ app.use(
         )
     )
 );
-// app.use(helmet());
-// app.use(
-//     helmet({
-//         contentSecurityPolicy: {
-//             directives: {
-//                 defaultSrc: ["'self'"],
-
-//                 scriptSrc: [
-//                     "'self'",
-//                     "https://cdn.jsdelivr.net"
-//                 ],
-
-//                 styleSrc: [
-//                     "'self'",
-//                     "'unsafe-inline'",
-//                     "https://cdn.jsdelivr.net"
-//                 ],
-
-//                 fontSrc: [
-//                     "'self'",
-//                     "https://cdn.jsdelivr.net"
-//                 ],
-
-//                 imgSrc: [
-//                     "'self'",
-//                     "data:"
-//                 ]
-//             }
-//         }
-//     })
-// );
 app.use(compression());
 app.use(morgan("dev"));
 app.use(express.static(path.join(__dirname, "public")));
@@ -74,19 +42,6 @@ app.set("layout", "layouts/main");
 app.use("/", routes);
 app.use("/api/products", productApiRoutes);
 
-
-
-
-
-
-
-
-
-
-
-
-// Rutas
-// const routes = require("./routes");
 
 
 // Error 404

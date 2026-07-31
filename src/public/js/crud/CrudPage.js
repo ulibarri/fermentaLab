@@ -73,8 +73,6 @@ class CrudPage {
 
         try {
 
-            // const entity =
-            //     this.form.read();
             let entity = this.form.read();
 
             entity = this.beforeSave(entity);
@@ -86,7 +84,6 @@ class CrudPage {
                     entity
                 );
                 this.afterSave(entity);
-                // UI.success("Registro actualizado.");
                 UI.success(this.options.updatedMessage);
 
             }
@@ -94,7 +91,6 @@ class CrudPage {
 
                 await this.api.create(entity);
                 this.afterSave(entity);
-                // UI.success("Registro creado.");
                 UI.success(this.options.createdMessage);
 
             }
@@ -134,10 +130,6 @@ class CrudPage {
 
     async remove(id) {
 
-        // const ok =
-        //     await UI.confirm(
-        //         "¿Eliminar registro?"
-        //     );
         const ok = await UI.confirm(
             this.options.deleteMessage
         );
@@ -149,9 +141,6 @@ class CrudPage {
 
             await this.api.delete(id);
             this.afterDelete(id);
-            // UI.success(
-            //     "Registro eliminado."
-            // );
             UI.success(this.options.deletedMessage);
 
             await this.load();

@@ -1,37 +1,3 @@
-// const BaseService = require("./BaseService");
-
-// const ProductRepository =
-//     require("../repositories/ProductRepository");
-
-// const ProductModel =
-//     require("../models/ProductModel");
-
-// class ProductService extends BaseService {
-
-//     constructor() {
-
-//         super(
-//             new ProductRepository()
-//         );
-
-//     }
-
-//     async create(data) {
-
-//         if (!data.name?.trim())
-//             throw new Error("El nombre es obligatorio.");
-
-//         const product =
-//             new ProductModel(data);
-
-//         return await super.create(product);
-
-//     }
-
-// }
-
-// module.exports = ProductService;
-
 const BaseService = require("./BaseService");
 const ProductRepository = require("../repositories/ProductRepository");
 const ProductModel = require("../models/ProductModel");
@@ -55,12 +21,6 @@ class ProductService extends BaseService {
 
         }
 
-        // const products = await this.getAll();
-
-        // const duplicated = products.find(p =>
-        //     p.name.trim().toLowerCase() === data.name.trim().toLowerCase() &&
-        //     p.categoryId === data.categoryId
-        // );
         const duplicated =
             await this.repository.findOne(
                 p =>
@@ -78,9 +38,6 @@ class ProductService extends BaseService {
         }
 
         // Generar siguiente código
-        // const nextNumber = products.length + 1;
-
-        // const code = "PROD-" + String(nextNumber).padStart(3, "0");
         const code =
             CodeGenerator.next(
                 products,
@@ -119,16 +76,6 @@ class ProductService extends BaseService {
 
         const products = await this.getAll();
 
-        // const duplicated = products.find(p =>
-
-        //     p.id !== id &&
-
-        //     p.categoryId === data.categoryId &&
-
-        //     p.name.trim().toLowerCase() ===
-        //     data.name.trim().toLowerCase()
-
-        // );
         const duplicated =
             await this.repository.findOne(
                 p =>
