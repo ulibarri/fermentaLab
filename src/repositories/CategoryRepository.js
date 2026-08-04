@@ -1,11 +1,15 @@
-const BaseRepository = require("./BaseRepository");
-const db = require("../config/DataContext");
+const SequelizeRepository =
+    require("./SequelizeRepository");
 
-class CategoryRepository extends BaseRepository {
+const Category =
+    require("../models/Category");
+
+class CategoryRepository
+    extends SequelizeRepository {
 
     constructor() {
 
-        super(db.categories);
+        super(Category);
 
     }
 

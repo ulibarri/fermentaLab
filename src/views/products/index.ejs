@@ -3,66 +3,60 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
-            <h1 class="mb-0">Productos</h1>
+
+            <h1>Productos</h1>
+
             <small class="text-muted">
+
                 Catálogo de productos FermentaLab
+
             </small>
+
         </div>
 
         <button id="btnNuevo" class="btn btn-primary">
-
-            <i class="bi bi-plus-circle"></i>
 
             Nuevo Producto
 
         </button>
 
     </div>
-    <div id="loader" class="alert alert-info" style="display:none;">
+
+    <div id="loader" class="alert alert-info" style="display:none">
 
         Cargando información...
 
     </div>
 
-    <% if (products && products.length> 0) { %>
+    <table id="tblProducts" class="table table-striped table-hover">
 
-        <table id="tblProducts" class="table table-striped table-hover">
+        <thead class="table-dark">
 
-            <thead class="table-dark">
+            <tr>
 
-                <tr>
+                <th>Código</th>
 
-                    <th>Código</th>
+                <th>Categoría</th>
 
-                    <th>Categoría</th>
+                <th>Nombre</th>
 
-                    <th>Nombre</th>
+                <th>Activo</th>
 
-                    <th>Activo</th>
+                <th width="180">
 
-                    <th width="180">
-                        Acciones
-                    </th>
+                    Acciones
 
-                </tr>
+                </th>
 
-            </thead>
-            <tbody id="productsTableBody">
+            </tr>
 
-            </tbody>
+        </thead>
 
+        <tbody id="productsTableBody">
 
-        </table>
+        </tbody>
 
-        <% } else { %>
-
-            <div class="alert alert-warning">
-
-                No existen productos registrados.
-
-            </div>
-
-            <% } %>
+    </table>
 
 </div>
 

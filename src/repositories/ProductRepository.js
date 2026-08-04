@@ -1,33 +1,85 @@
-const BaseRepository = require("./BaseRepository");
+const SequelizeRepository = require("./SequelizeRepository");
+const Product = require("../models/Product");
 
-const db = require("../config/DataContext");
-
-const ProductModel = require("../models/ProductModel");
-
-class ProductRepository extends BaseRepository {
+class ProductRepository extends SequelizeRepository {
 
     constructor() {
 
-        super(db.products);
+        super(Product);
 
     }
 
     async findAll() {
 
-        const data = await super.findAll();
+        return await super.findAll({
 
-        return data.map(x => new ProductModel(x));
+            include: {
+
+                association: "category"
+
+            },
+
+            order: [["code", "ASC"]]
+
+        });
 
     }
 
     async findById(id) {
 
-        const data = await super.findById(id);
+        return await super.findById(id, {
 
-        if (!data)
-            return null;
+            include: {
 
-        return new ProductModel(data);
+                association: "category"
+
+            }
+
+        });
+
+    }
+
+    async findByCode(code) {
+
+        return await this.findOne({
+
+            code
+
+        });
+
+    }
+
+    async findByName(categoryId, name) {
+
+        return await this.findOne({
+
+            categoryId,
+
+            name
+
+        });
+
+    }
+
+    async findActive() {
+
+        return await super.findAll({
+
+            where: {
+
+                active: true
+
+            },
+
+            include: {
+
+                association: "category"
+
+            },
+
+            order: [["code", "ASC"]]
+
+        });
 
     }
 

@@ -8,12 +8,6 @@ async function initializeDatabase() {
 
         console.log("SQLite conectado.");
 
-        await db.sequelize.sync({
-            alter: true
-        });
-
-        console.log("Base sincronizada.");
-
     }
     catch (err) {
 

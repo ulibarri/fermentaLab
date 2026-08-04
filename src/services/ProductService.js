@@ -1,7 +1,5 @@
 const BaseService = require("./BaseService");
 const ProductRepository = require("../repositories/ProductRepository");
-const ProductModel = require("../models/ProductModel");
-const CodeGenerator = require("../utils/CodeGenerator");
 
 class ProductService extends BaseService {
 
@@ -22,31 +20,25 @@ class ProductService extends BaseService {
         }
 
         const duplicated =
-            await this.repository.findOne(
-                p =>
-                    p.categoryId === data.categoryId &&
-                    p.name.trim().toLowerCase() ===
-                    data.name.trim().toLowerCase()
-            );
+            await this.repository.findByName(
 
-        const products = await this.getAll();
+                data.categoryId,
+
+                data.name.trim()
+
+            );
 
         if (duplicated) {
 
-            throw new Error("Ya existe un producto con ese nombre en la categoría.");
+            throw new Error(
+                "Ya existe un producto con ese nombre en la categoría."
+            );
 
         }
 
-        // Generar siguiente código
-        const code =
-            CodeGenerator.next(
-                products,
-                "PROD"
-            );
+        return await this.repository.create({
 
-        const product = new ProductModel({
-
-            id: code,
+            code: data.code,
 
             categoryId: data.categoryId,
 
@@ -58,116 +50,109 @@ class ProductService extends BaseService {
 
         });
 
-        return await super.create(product);
-
     }
+
     async update(id, data) {
 
-        if (!data)
+        if (!data) {
+
             throw new Error("No se recibieron datos.");
 
-        if (!data.name || data.name.trim() === "")
+        }
+
+        if (!data.name || data.name.trim() === "") {
+
             throw new Error("El nombre es obligatorio.");
 
-        const product = await this.get(id);
+        }
 
-        if (!product)
+        const product =
+            await this.repository.findById(id);
+
+        if (!product) {
+
             throw new Error("Producto no encontrado.");
 
-        const products = await this.getAll();
+        }
 
         const duplicated =
-            await this.repository.findOne(
-                p =>
-                    p.id !== id &&
-                    p.categoryId === data.categoryId &&
-                    p.name.trim().toLowerCase() ===
-                    data.name.trim().toLowerCase()
+            await this.repository.findByName(
+
+                data.categoryId,
+
+                data.name.trim()
+
             );
 
-        if (duplicated)
+        if (
+
+            duplicated &&
+
+            duplicated.id !== Number(id)
+
+        ) {
+
             throw new Error(
+
                 "Ya existe otro producto con ese nombre."
+
             );
 
-        product.categoryId = data.categoryId;
+        }
 
-        product.name = data.name.trim();
-
-        product.description =
-            data.description || "";
-
-        product.active =
-            data.active ?? true;
-
-        if (typeof product.touch === "function")
-            product.touch();
-        else
-            product.updatedAt =
-                new Date().toISOString();
-
-        return await super.update(
+        return await this.repository.update(
 
             id,
 
-            product
+            {
+
+                categoryId: data.categoryId,
+
+                code: data.code,
+
+                name: data.name.trim(),
+
+                description: data.description || "",
+
+                active: data.active ?? true
+
+            }
 
         );
 
     }
+
     async getActive() {
 
-        const products = await this.getAll();
-
-        return products.filter(p => !p.deleted);
+        return await this.repository.findActive();
 
     }
+
     async delete(id) {
 
-        const product = await this.get(id);
+        const product =
+            await this.repository.findById(id);
 
-        if (!product)
+        if (!product) {
+
             throw new Error("Producto no encontrado.");
 
-        product.active = false;
+        }
 
-        product.deleted = true;
+        return await this.repository.update(
 
-        if (typeof product.touch === "function")
-            product.touch();
-        else
-            product.updatedAt = new Date().toISOString();
+            id,
 
-        await this.repository.update(id, product);
+            {
 
-        return product;
+                active: false
 
-    }
-    async countActive() {
+            }
 
-        return await this.repository.count(
-            p => !p.deleted
-        );
-
-    }
-
-    async countDeleted() {
-
-        return await this.repository.count(
-            p => p.deleted
-        );
-
-    }
-
-    async exists(id) {
-
-        return await this.repository.exists(
-            p => p.id === id
         );
 
     }
 
 }
-
 
 module.exports = ProductService;
