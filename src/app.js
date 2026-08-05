@@ -6,6 +6,8 @@ const morgan = require("morgan");
 const expressLayouts = require("express-ejs-layouts");
 const routes = require("./routes");
 const productApiRoutes = require("./routes/api/products");
+const unitApiRoutes =
+    require("./routes/api/units");
 
 
 
@@ -41,6 +43,14 @@ app.set("layout", "layouts/main");
 //ROUTES
 app.use("/", routes);
 app.use("/api/products", productApiRoutes);
+app.use(
+
+    "/api/units",
+
+    unitApiRoutes
+
+);
+
 
 
 

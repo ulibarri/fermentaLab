@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "migrate": "sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo",
+    "migration:create": "sequelize-cli migration:generate --name",
     "seed": "node src/seeders/DatabaseSeeder.js"
   },
   "keywords": [],

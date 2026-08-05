@@ -2,6 +2,7 @@ const sequelize = require("../config/database");
 
 const Category = require("./Category");
 const Product = require("./Product");
+const Unit = require("./Unit");
 
 Category.hasMany(Product, {
 
@@ -26,6 +27,8 @@ module.exports = {
 
     Category,
 
-    Product
+    Product,
+
+    Unit
 
 };

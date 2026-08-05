@@ -2,6 +2,7 @@ const sequelize = require("../config/database");
 const SeedContext = require("./SeedContext");
 const CategorySeeder = require("./CategorySeeder");
 const ProductSeeder = require("./ProductSeeder");
+const UnitSeeder = require("./UnitSeeder");
 
 async function run() {
 
@@ -28,6 +29,14 @@ async function run() {
             transaction
 
         ).run();
+        await new UnitSeeder(
+
+            context,
+
+            transaction
+
+        ).run();
+
         await transaction.commit();
         console.log(context);
         console.log(
