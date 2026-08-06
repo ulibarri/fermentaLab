@@ -1,5 +1,6 @@
 const SequelizeRepository = require("./SequelizeRepository");
 const Product = require("../models/Product");
+const sequelize = require("../config/database");
 
 class ProductRepository extends SequelizeRepository {
 
@@ -55,15 +56,17 @@ class ProductRepository extends SequelizeRepository {
 
             categoryId,
 
-            name
+            name: sequelize.where(
+                sequelize.fn("LOWER", sequelize.col("name")),
+                name.toLowerCase()
+            )
 
         });
 
     }
-
     async findActive() {
 
-        return await super.findAll({
+        return await this.model.findAll({
 
             where: {
 
@@ -77,7 +80,11 @@ class ProductRepository extends SequelizeRepository {
 
             },
 
-            order: [["code", "ASC"]]
+            order: [
+
+                ["code", "ASC"]
+
+            ]
 
         });
 

@@ -7,6 +7,7 @@ const Ingredient = require("./Ingredient");
 const Recipe = require("./Recipe");
 const RecipeVersion = require("./RecipeVersion");
 const RecipeIngredient = require("./RecipeIngredient");
+const ProductionBatch = require("./ProductionBatch");
 
 Category.hasMany(Product, {
 
@@ -130,6 +131,33 @@ RecipeIngredient.belongsTo(Unit, {
     as: "unit"
 
 });
+RecipeVersion.hasMany(
+
+    ProductionBatch,
+
+    {
+
+        foreignKey: "recipeVersionId",
+
+        as: "productionBatches"
+
+    }
+
+);
+
+ProductionBatch.belongsTo(
+
+    RecipeVersion,
+
+    {
+
+        foreignKey: "recipeVersionId",
+
+        as: "recipeVersion"
+
+    }
+
+);
 
 module.exports = {
 
@@ -147,5 +175,7 @@ module.exports = {
 
     RecipeVersion,
 
-    RecipeIngredient
+    RecipeIngredient,
+
+    ProductionBatch
 };

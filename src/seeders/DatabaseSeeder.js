@@ -6,6 +6,7 @@ const UnitSeeder = require("./UnitSeeder");
 const IngredientSeeder = require("./IngredientSeeder");
 const RecipeSeeder = require("./RecipeSeeder");
 const RecipeVersionSeeder = require("./RecipeVersionSeeder");
+const RecipeIngredientSeeder = require("./RecipeIngredientSeeder");
 
 async function run() {
 
@@ -58,6 +59,14 @@ async function run() {
         ).run();
 
         await new RecipeVersionSeeder(
+
+            context,
+
+            transaction
+
+        ).run();
+
+        await new RecipeIngredientSeeder(
 
             context,
 

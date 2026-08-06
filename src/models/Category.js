@@ -47,7 +47,16 @@ const Category = sequelize.define("Category", {
 
         defaultValue: true
 
-    }
+    },
+    batchPrefix: {
+
+        type: DataTypes.STRING(5),
+
+        allowNull: false,
+
+        unique: true
+
+    },
 
 }, {
 

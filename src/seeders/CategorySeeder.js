@@ -39,6 +39,8 @@ class CategorySeeder extends BaseSeeder {
                     description:
                         item.description || "",
 
+                    batchPrefix: item.batchPrefix,
+
                     active: item.active
 
                 },
