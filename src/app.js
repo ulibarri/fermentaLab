@@ -6,8 +6,9 @@ const morgan = require("morgan");
 const expressLayouts = require("express-ejs-layouts");
 const routes = require("./routes");
 const productApiRoutes = require("./routes/api/products");
-const unitApiRoutes =
-    require("./routes/api/units");
+const unitApiRoutes = require("./routes/api/units");
+const ingredientApiRoutes = require("./routes/api/ingredients");
+const recipeApiRoutes = require("./routes/api/recipes");
 
 
 
@@ -43,14 +44,9 @@ app.set("layout", "layouts/main");
 //ROUTES
 app.use("/", routes);
 app.use("/api/products", productApiRoutes);
-app.use(
-
-    "/api/units",
-
-    unitApiRoutes
-
-);
-
+app.use("/api/units", unitApiRoutes);
+app.use("/api/ingredients", ingredientApiRoutes);
+app.use("/api/recipes", recipeApiRoutes);
 
 
 

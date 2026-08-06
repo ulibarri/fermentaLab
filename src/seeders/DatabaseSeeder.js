@@ -3,6 +3,9 @@ const SeedContext = require("./SeedContext");
 const CategorySeeder = require("./CategorySeeder");
 const ProductSeeder = require("./ProductSeeder");
 const UnitSeeder = require("./UnitSeeder");
+const IngredientSeeder = require("./IngredientSeeder");
+const RecipeSeeder = require("./RecipeSeeder");
+const RecipeVersionSeeder = require("./RecipeVersionSeeder");
 
 async function run() {
 
@@ -29,7 +32,32 @@ async function run() {
             transaction
 
         ).run();
+
         await new UnitSeeder(
+
+            context,
+
+            transaction
+
+        ).run();
+
+        await new IngredientSeeder(
+
+            context,
+
+            transaction
+
+        ).run();
+
+        await new RecipeSeeder(
+
+            context,
+
+            transaction
+
+        ).run();
+
+        await new RecipeVersionSeeder(
 
             context,
 
@@ -42,6 +70,7 @@ async function run() {
         console.log(
             "Seed completado."
         );
+
 
     }
 

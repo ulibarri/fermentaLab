@@ -1,15 +1,15 @@
 const SequelizeRepository =
     require("./SequelizeRepository");
 
-const Recipe =
-    require("../models/Recipe");
+const Ingredient =
+    require("../models/Ingredient");
 
-class RecipeRepository
+class IngredientRepository
     extends SequelizeRepository {
 
     constructor() {
 
-        super(Recipe);
+        super(Ingredient);
 
     }
 
@@ -19,7 +19,7 @@ class RecipeRepository
 
             include: {
 
-                association: "product"
+                association: "unit"
 
             }
 
@@ -37,7 +37,7 @@ class RecipeRepository
 
                 include: {
 
-                    association: "product"
+                    association: "unit"
 
                 }
 
@@ -49,4 +49,4 @@ class RecipeRepository
 
 }
 
-module.exports = RecipeRepository;
+module.exports = IngredientRepository;
