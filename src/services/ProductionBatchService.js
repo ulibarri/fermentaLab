@@ -33,6 +33,12 @@ class ProductionBatchService
     }
     async create(data, transaction = null) {
 
+        if (!data || !data.recipeVersionId) {
+
+            throw new Error("recipeVersionId es obligatorio.");
+
+        }
+
         return this.transactional(
 
             async transaction => {
@@ -48,17 +54,29 @@ class ProductionBatchService
 
                                 {
 
-                                    model: Product,
+                                    model: Recipe,
 
-                                    as: "product",
+                                    as: "recipe",
 
                                     include: [
 
                                         {
 
-                                            model: Category,
+                                            model: Product,
 
-                                            as: "category"
+                                            as: "product",
+
+                                            include: [
+
+                                                {
+
+                                                    model: Category,
+
+                                                    as: "category"
+
+                                                }
+
+                                            ]
 
                                         }
 
@@ -87,7 +105,7 @@ class ProductionBatchService
 
                     );
 
-                const batch = await this.repository.create({
+                const created = await this.repository.create({
 
                     batchNumber,
 
@@ -97,7 +115,19 @@ class ProductionBatchService
 
                     targetVolume: data.targetVolume,
 
-                    status: ProductionBatchStatus.PLANNED,
+                    producedVolume: null,
+
+                    status: "PLANNED",
+
+                    startedAt: null,
+
+                    finishedAt: null,
+
+                    secondFermentStartedAt: null,
+
+                    secondFermentFinishedAt: null,
+
+                    finalPsiReading: null,
 
                     notes: data.notes
 
@@ -107,7 +137,7 @@ class ProductionBatchService
 
                 });
 
-                return batch;
+                return await this.repository.findById(created.id);
 
             },
 
@@ -202,6 +232,126 @@ class ProductionBatchService
 
                 batch.finishedAt =
                     new Date();
+
+                return await this.repository.update(
+
+                    batchId,
+
+                    batch,
+
+                    transaction
+
+                );
+
+            },
+
+            transaction
+
+        );
+
+    }
+    async complete(batchId, data, transaction = null) {
+
+        if (!data) {
+
+            throw new Error(
+                "No se recibieron datos. Verifica el body y el header Content-Type: application/json."
+            );
+
+        }
+
+        return this.transactional(
+
+            async transaction => {
+
+                const batch =
+                    await this.repository.findById(
+
+                        batchId,
+
+                        transaction
+
+                    );
+
+                if (!batch) {
+
+                    throw new Error("Batch not found");
+
+                }
+
+                if (batch.status !== "IN_PROGRESS") {
+
+                    throw new Error(
+                        "El lote debe estar en progreso (IN_PROGRESS) para poder completarse."
+                    );
+
+                }
+
+                batch.status = "COMPLETED";
+
+                batch.producedVolume =
+                    data.producedVolume;
+
+                batch.finishedAt =
+                    new Date();
+
+                batch.notes =
+                    data.notes ?? batch.notes;
+
+                return await this.repository.update(
+
+                    batchId,
+
+                    batch,
+
+                    transaction
+
+                );
+
+            },
+
+            transaction
+
+        );
+
+    }
+    async cancel(batchId, reason = null, transaction = null) {
+
+        return this.transactional(
+
+            async transaction => {
+
+                const batch =
+                    await this.repository.findById(
+
+                        batchId,
+
+                        transaction
+
+                    );
+
+                if (!batch) {
+
+                    throw new Error("Batch not found");
+
+                }
+
+                if (batch.status !== "PLANNED" && batch.status !== "IN_PROGRESS") {
+
+                    throw new Error(
+                        "Solo se pueden cancelar lotes en estado PLANNED o IN_PROGRESS."
+                    );
+
+                }
+
+                batch.status = "CANCELLED";
+
+                if (reason) {
+
+                    batch.notes =
+                        reason;
+
+                }
 
                 return await this.repository.update(
 

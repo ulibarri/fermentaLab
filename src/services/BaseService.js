@@ -1,8 +1,38 @@
+const sequelize = require("../config/database");
+
 class BaseService {
 
     constructor(repository) {
 
         this.repository = repository;
+
+    }
+
+    async transactional(fn, existingTransaction = null) {
+
+        if (existingTransaction) {
+
+            return await fn(existingTransaction);
+
+        }
+
+        const transaction = await sequelize.transaction();
+
+        try {
+
+            const result = await fn(transaction);
+
+            await transaction.commit();
+
+            return result;
+
+        } catch (err) {
+
+            await transaction.rollback();
+
+            throw err;
+
+        }
 
     }
 

@@ -39,6 +39,14 @@ const ProductionBatch = sequelize.define("ProductionBatch", {
 
     },
 
+    targetVolume: {
+
+        type: DataTypes.DECIMAL(10, 3),
+
+        allowNull: true
+
+    },
+
     producedVolume: {
 
         type: DataTypes.DECIMAL(10, 3),
@@ -49,7 +57,7 @@ const ProductionBatch = sequelize.define("ProductionBatch", {
 
     status: {
 
-        type: DataTypes.STRING(20),
+        type: DataTypes.STRING(30),
 
         allowNull: false,
 
@@ -72,6 +80,45 @@ const ProductionBatch = sequelize.define("ProductionBatch", {
         allowNull: true
 
     },
+    secondFermentStartedAt: {
+
+        type: DataTypes.DATE,
+
+        allowNull: true
+
+    },
+
+    secondFermentFinishedAt: {
+
+        type: DataTypes.DATE,
+
+        allowNull: true
+
+    },
+    finalPsiReading: {
+
+        type: DataTypes.DECIMAL(10, 3),
+
+        allowNull: true
+
+    },
+
+    createdAt: {
+
+        type: DataTypes.DATE,
+
+        allowNull: true
+
+    },
+
+    updatedAt: {
+
+        type: DataTypes.DATE,
+
+        allowNull: true
+
+    },
+
 
     notes: {
 

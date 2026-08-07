@@ -59,7 +59,12 @@ class SequelizeRepository {
         if (!record)
             return null;
 
-        await record.update(entity);
+        const values =
+            entity && typeof entity.get === "function"
+                ? entity.get({ plain: true })
+                : entity;
+
+        await record.update(values);
 
         return record;
 
