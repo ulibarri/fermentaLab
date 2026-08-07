@@ -1,0 +1,167 @@
+<div class="modal fade" id="modalMeasurement" tabindex="-1" aria-labelledby="modalMeasurementTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <form id="measurementForm">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title" id="modalMeasurementTitle">
+                        Nueva Medición
+                    </h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+
+                        <label for="measurementDate" class="form-label">
+                            Fecha y hora
+                        </label>
+
+                        <input type="datetime-local" id="measurementDate" name="measurementDate" class="form-control" required>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="phase" class="form-label">
+                            Fase
+                        </label>
+
+                        <select id="phase" name="phase" class="form-select" required>
+
+                            <option value="F1">F1</option>
+
+                            <option value="F2">F2</option>
+
+                            <option value="FINAL">FINAL</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="row">
+
+                        <div class="col-6 mb-3">
+
+                            <label for="ph" class="form-label">
+                                pH
+                            </label>
+
+                            <input type="number" step="0.01" id="ph" name="ph" class="form-control">
+
+                        </div>
+
+                        <div class="col-6 mb-3">
+
+                            <label for="brix" class="form-label">
+                                °Brix
+                            </label>
+
+                            <input type="number" step="0.01" id="brix" name="brix" class="form-control">
+
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+
+                        <div class="col-6 mb-3">
+
+                            <label for="specificGravity" class="form-label">
+                                SG
+                            </label>
+
+                            <input type="number" step="0.0001" id="specificGravity" name="specificGravity" class="form-control">
+
+                        </div>
+
+                        <div class="col-6 mb-3">
+
+                            <label for="estimatedAlcohol" class="form-label">
+                                Alcohol estimado (%)
+                            </label>
+
+                            <input type="number" step="0.01" id="estimatedAlcohol" name="estimatedAlcohol" class="form-control">
+
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+
+                        <div class="col-6 mb-3">
+
+                            <label for="liquidTemperature" class="form-label">
+                                Temp. líquido (°C)
+                            </label>
+
+                            <input type="number" step="0.01" id="liquidTemperature" name="liquidTemperature" class="form-control">
+
+                        </div>
+
+                        <div class="col-6 mb-3">
+
+                            <label for="ambientTemperature" class="form-label">
+                                Temp. ambiente (°C)
+                            </label>
+
+                            <input type="number" step="0.01" id="ambientTemperature" name="ambientTemperature" class="form-control">
+
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="psi" class="form-label">
+                            PSI
+                        </label>
+
+                        <input type="number" step="0.001" id="psi" name="psi" class="form-control">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="notes" class="form-label">
+                            Notas
+                        </label>
+
+                        <textarea id="notes" name="notes" class="form-control" rows="2">
+                        </textarea>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+
+                        Cancelar
+
+                    </button>
+
+                    <button type="submit" class="btn btn-success">
+
+                        Guardar
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>

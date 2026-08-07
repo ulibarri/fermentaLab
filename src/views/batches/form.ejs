@@ -1,0 +1,101 @@
+<div class="modal fade" id="modalBatch" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <form id="batchForm">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title" id="modalTitle">
+                        Nuevo Lote
+                    </h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+
+                        <label for="recipeVersionId" class="form-label">
+                            Receta / versión
+                        </label>
+
+                        <select id="recipeVersionId" name="recipeVersionId" class="form-select" required>
+
+                            <option value="" disabled selected>
+                                Selecciona una receta
+                            </option>
+
+                            <% recipeVersions.forEach(function(rv) { %>
+
+                                <option value="<%= rv.id %>">
+                                    <%= rv.recipe ? rv.recipe.name : ("Receta " + rv.recipeId) %> (v<%= rv.version %>)
+                                </option>
+
+                            <% }); %>
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="plannedVolume" class="form-label">
+                            Volumen planeado (L)
+                        </label>
+
+                        <input type="number" step="0.001" id="plannedVolume" name="plannedVolume" class="form-control" required>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="targetVolume" class="form-label">
+                            Volumen objetivo (L)
+                        </label>
+
+                        <input type="number" step="0.001" id="targetVolume" name="targetVolume" class="form-control">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="notes" class="form-label">
+                            Notas
+                        </label>
+
+                        <textarea id="notes" name="notes" class="form-control" rows="3">
+                        </textarea>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+
+                        Cancelar
+
+                    </button>
+
+                    <button type="submit" class="btn btn-success">
+
+                        Guardar
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>

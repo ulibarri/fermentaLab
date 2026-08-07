@@ -52,6 +52,65 @@ class BatchesPage extends CrudPage {
                         formatter: value =>
                             this.renderStatus(value)
 
+                    },
+
+                    {
+
+                        field: "startedAt",
+
+                        formatter: value =>
+
+                            value
+
+                                ? new Date(value)
+                                    .toLocaleString()
+
+                                : "-"
+
+                    },
+
+                    {
+
+                        field: "producedVolume",
+
+                        formatter: value =>
+
+                            value !== null && value !== undefined
+
+                                ? `${value} L`
+
+                                : "—"
+
+                    },
+
+                    {
+
+                        field: "finishedAt",
+
+                        formatter: value =>
+
+                            value
+
+                                ? new Date(value)
+                                    .toLocaleString()
+
+                                : "—"
+
+                    },
+
+                    {
+
+                        field: "secondFermentStartedAt",
+
+                        formatter: value =>
+
+                            value
+
+                                ? new Date(value)
+                                    .toLocaleString()
+
+                                : "—"
+
                     }
 
                 ]
@@ -99,6 +158,17 @@ class BatchesPage extends CrudPage {
 
             );
 
+        this.f2FinishForm =
+            new F2FinishForm("f2FinishForm");
+
+        this.f2FinishForm.form.addEventListener(
+
+            "submit",
+
+            e => this.saveF2Finish(e)
+
+        );
+
     }
 
     renderStatus(status) {
@@ -110,6 +180,10 @@ class BatchesPage extends CrudPage {
             IN_PROGRESS: "primary",
 
             COMPLETED: "success",
+
+            F2_STARTED: "info",
+
+            F2_DONE: "dark",
 
             CANCELLED: "danger"
 
@@ -133,27 +207,348 @@ class BatchesPage extends CrudPage {
 
     }
 
+    async start(id) {
+
+        const ok = await UI.confirm(
+
+            "¿Desea iniciar este lote?"
+
+        );
+
+        if (!ok)
+
+            return;
+
+        try {
+
+            await this.api.start(id);
+
+            UI.success(
+
+                "Producción iniciada."
+
+            );
+
+            await this.load();
+
+        }
+
+        catch (err) {
+
+            UI.error(err.message);
+
+        }
+
+    }
+
+    async cancelBatch(id) {
+
+        const ok = await UI.confirm(
+
+            "¿Desea cancelar este lote?"
+
+        );
+
+        if (!ok)
+
+            return;
+
+        const reason =
+            prompt("Motivo de cancelación (opcional):") ||
+            null;
+
+        try {
+
+            await this.api.cancel(id, { reason });
+
+            UI.success(
+
+                "Lote cancelado correctamente."
+
+            );
+
+            await this.load();
+
+        }
+
+        catch (err) {
+
+            UI.error(err.message);
+
+        }
+
+    }
+
+    async complete(id) {
+
+        const ok = await UI.confirm(
+
+            "¿Desea finalizar la producción de este lote?"
+
+        );
+
+        if (!ok)
+
+            return;
+
+        const producedVolumeInput =
+            prompt("Volumen producido (L):");
+
+        if (producedVolumeInput === null)
+
+            return;
+
+        const producedVolume =
+            Number(producedVolumeInput);
+
+        if (isNaN(producedVolume)) {
+
+            UI.error(
+                "El volumen producido debe ser un número."
+            );
+
+            return;
+
+        }
+
+        const notes =
+            prompt("Observaciones:") ||
+            null;
+
+        try {
+
+            await this.api.complete(id, {
+
+                producedVolume,
+
+                notes
+
+            });
+
+            UI.success(
+
+                "Producción finalizada."
+
+            );
+
+            await this.load();
+
+        }
+
+        catch (err) {
+
+            UI.error(err.message);
+
+        }
+
+    }
+
+    async startSecondFermentation(id) {
+
+        const ok = await UI.confirm(
+
+            "¿Desea iniciar la segunda fermentación de este lote?"
+
+        );
+
+        if (!ok)
+
+            return;
+
+        try {
+
+            await this.api.startSecondFermentation(id);
+
+            UI.success(
+
+                "Segunda fermentación iniciada."
+
+            );
+
+            await this.load();
+
+        }
+
+        catch (err) {
+
+            UI.error(err.message);
+
+        }
+
+    }
+
+    async saveF2Finish(event) {
+
+        event.preventDefault();
+
+        const id = this.f2FinishForm.batchId;
+
+        const data = this.f2FinishForm.read();
+
+        try {
+
+            await this.api.finishSecondFermentation(id, data);
+
+            this.f2FinishForm.close();
+
+            UI.success(
+
+                "Segunda fermentación finalizada."
+
+            );
+
+            await this.load();
+
+        }
+
+        catch (err) {
+
+            UI.error(err.message);
+
+        }
+
+    }
+
     createActions(td, batch) {
 
-        const btnView =
+        if (batch.status !== "PLANNED") {
 
-            document.createElement("button");
+            const btnMeasurements =
 
-        btnView.className =
+                document.createElement("button");
 
-            "btn btn-info btn-sm me-2";
+            btnMeasurements.className =
 
-        btnView.textContent =
+                "btn btn-secondary btn-sm me-2";
 
-            "Ver";
+            btnMeasurements.textContent =
 
-        btnView.onclick =
+                "Mediciones";
 
-            () => this.edit(batch.id);
+            btnMeasurements.onclick =
 
-        td.appendChild(btnView);
+                () => {
 
-        if (batch.status !== "CANCELLED") {
+                    window.location.href =
+                        `/batches/${batch.id}/measurements`;
+
+                };
+
+            td.appendChild(btnMeasurements);
+
+        }
+
+        if (batch.status === "PLANNED") {
+
+            const btnStart =
+
+                document.createElement("button");
+
+            btnStart.className =
+
+                "btn btn-success btn-sm me-2";
+
+            btnStart.textContent =
+
+                "▶ Iniciar";
+
+            btnStart.onclick =
+
+                () => this.start(batch.id);
+
+            td.appendChild(btnStart);
+
+        }
+
+        if (batch.status === "IN_PROGRESS") {
+
+            const btnComplete =
+
+                document.createElement("button");
+
+            btnComplete.className =
+
+                "btn btn-primary btn-sm me-2";
+
+            btnComplete.textContent =
+
+                "Finalizar";
+
+            btnComplete.onclick =
+
+                () => this.complete(batch.id);
+
+            td.appendChild(btnComplete);
+
+        }
+
+        if (batch.status === "COMPLETED") {
+
+            const btnStartF2 =
+
+                document.createElement("button");
+
+            btnStartF2.className =
+
+                "btn btn-info btn-sm me-2";
+
+            btnStartF2.textContent =
+
+                "Iniciar F2";
+
+            btnStartF2.onclick =
+
+                () => this.startSecondFermentation(batch.id);
+
+            td.appendChild(btnStartF2);
+
+        }
+
+        if (batch.status === "F2_STARTED") {
+
+            const btnFinishF2 =
+
+                document.createElement("button");
+
+            btnFinishF2.className =
+
+                "btn btn-dark btn-sm me-2";
+
+            btnFinishF2.textContent =
+
+                "Finalizar F2";
+
+            btnFinishF2.onclick =
+
+                () => this.f2FinishForm.openFor(batch.id);
+
+            td.appendChild(btnFinishF2);
+
+        }
+
+        if (batch.status === "PLANNED") {
+
+            const btnEdit =
+
+                document.createElement("button");
+
+            btnEdit.className =
+
+                "btn btn-info btn-sm me-2";
+
+            btnEdit.textContent =
+
+                "Editar";
+
+            btnEdit.onclick =
+
+                () => this.edit(batch.id);
+
+            td.appendChild(btnEdit);
+
+        }
+
+        if (batch.status === "PLANNED" || batch.status === "IN_PROGRESS") {
 
             const btnCancel =
 
@@ -169,7 +564,7 @@ class BatchesPage extends CrudPage {
 
             btnCancel.onclick =
 
-                () => this.remove(batch.id);
+                () => this.cancelBatch(batch.id);
 
             td.appendChild(btnCancel);
 

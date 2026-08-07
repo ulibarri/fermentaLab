@@ -146,6 +146,104 @@ class ProductionBatchService
         );
 
     }
+    async update(batchId, data, transaction = null) {
+
+        if (!data) {
+
+            throw new Error(
+                "No se recibieron datos. Verifica el body y el header Content-Type: application/json."
+            );
+
+        }
+
+        return this.transactional(
+
+            async transaction => {
+
+                const batch =
+                    await this.repository.findById(
+
+                        batchId,
+
+                        transaction
+
+                    );
+
+                if (!batch) {
+
+                    throw new Error("Batch not found");
+
+                }
+
+                if (batch.status !== "PLANNED") {
+
+                    throw new Error(
+                        "Solo se pueden editar lotes en estado PLANNED."
+                    );
+
+                }
+
+                if (data.recipeVersionId) {
+
+                    const recipeVersion =
+                        await RecipeVersion.findByPk(
+                            data.recipeVersionId
+                        );
+
+                    if (!recipeVersion) {
+
+                        throw new Error("Recipe version not found");
+
+                    }
+
+                    batch.recipeVersionId =
+                        data.recipeVersionId;
+
+                }
+
+                if (data.plannedVolume !== undefined) {
+
+                    batch.plannedVolume =
+                        data.plannedVolume;
+
+                }
+
+                if (data.targetVolume !== undefined) {
+
+                    batch.targetVolume =
+                        data.targetVolume;
+
+                }
+
+                if (data.notes !== undefined) {
+
+                    batch.notes =
+                        data.notes;
+
+                }
+
+                await this.repository.update(
+
+                    batchId,
+
+                    batch,
+
+                    transaction
+
+                );
+
+                return await this.repository.findById(
+                    batchId,
+                    transaction
+                );
+
+            },
+
+            transaction
+
+        );
+
+    }
     async start(batchId, transaction = null) {
 
         return this.transactional(
@@ -306,6 +404,152 @@ class ProductionBatchService
 
                     transaction
 
+                );
+
+            },
+
+            transaction
+
+        );
+
+    }
+    async startSecondFermentation(batchId, transaction = null) {
+
+        return this.transactional(
+
+            async transaction => {
+
+                const batch =
+                    await this.repository.findById(
+
+                        batchId,
+
+                        transaction
+
+                    );
+
+                if (!batch) {
+
+                    throw new Error("Batch not found");
+
+                }
+
+                if (batch.status !== "COMPLETED") {
+
+                    throw new Error(
+                        "El lote debe estar COMPLETED para iniciar la segunda fermentación."
+                    );
+
+                }
+
+                batch.status =
+                    "F2_STARTED";
+
+                batch.secondFermentStartedAt =
+                    new Date();
+
+                await this.repository.update(
+
+                    batchId,
+
+                    batch,
+
+                    transaction
+
+                );
+
+                return await this.repository.findById(
+                    batchId,
+                    transaction
+                );
+
+            },
+
+            transaction
+
+        );
+
+    }
+    async finishSecondFermentation(batchId, data, transaction = null) {
+
+        if (!data) {
+
+            throw new Error(
+                "No se recibieron datos. Verifica el body y el header Content-Type: application/json."
+            );
+
+        }
+
+        return this.transactional(
+
+            async transaction => {
+
+                const batch =
+                    await this.repository.findById(
+
+                        batchId,
+
+                        transaction
+
+                    );
+
+                if (!batch) {
+
+                    throw new Error("Batch not found");
+
+                }
+
+                if (batch.status !== "F2_STARTED") {
+
+                    throw new Error(
+                        "El lote debe estar F2_STARTED para finalizar la segunda fermentación."
+                    );
+
+                }
+
+                batch.status =
+                    "F2_DONE";
+
+                batch.secondFermentFinishedAt =
+                    new Date();
+
+                batch.finalPsiReading =
+                    data.finalPsiReading;
+
+                batch.finalPh =
+                    data.finalPh;
+
+                batch.finalBrix =
+                    data.finalBrix;
+
+                batch.finalSpecificGravity =
+                    data.finalSpecificGravity;
+
+                batch.estimatedAlcohol =
+                    data.estimatedAlcohol;
+
+                batch.finalTemperature =
+                    data.finalTemperature;
+
+                batch.ambientTemperature =
+                    data.ambientTemperature;
+
+                batch.carbonationNotes =
+                    data.carbonationNotes;
+
+                await this.repository.update(
+
+                    batchId,
+
+                    batch,
+
+                    transaction
+
+                );
+
+                return await this.repository.findById(
+                    batchId,
+                    transaction
                 );
 
             },

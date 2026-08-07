@@ -1,0 +1,52 @@
+{
+    "source": "Brewer's Elite - Conversion Table (Sp.Gr @60°F / Approx %ABV / Brix @60°F, with Temperature Correction table)",
+    "units": {
+        "sg": "specific gravity at 60°F",
+        "brix": "degrees Brix at 60°F",
+        "abv": "approximate %ABV",
+        "temperatureF": "degrees Fahrenheit"
+    },
+    "points": [
+        { "sg": 0.980, "abv": -2.6, "brix": -5.3 },
+        { "sg": 0.985, "abv": -2.0, "brix": -3.9 },
+        { "sg": 0.990, "abv": -1.3, "brix": -2.6 },
+        { "sg": 0.995, "abv": -0.7, "brix": -1.3 },
+        { "sg": 1.000, "abv": 0.0, "brix": 0.0 },
+        { "sg": 1.005, "abv": 0.7, "brix": 1.3 },
+        { "sg": 1.010, "abv": 1.3, "brix": 2.5 },
+        { "sg": 1.015, "abv": 2.0, "brix": 3.8 },
+        { "sg": 1.020, "abv": 2.6, "brix": 5.1 },
+        { "sg": 1.025, "abv": 3.3, "brix": 6.3 },
+        { "sg": 1.030, "abv": 3.9, "brix": 7.5 },
+        { "sg": 1.035, "abv": 4.6, "brix": 8.7 },
+        { "sg": 1.040, "abv": 5.2, "brix": 10.0 },
+        { "sg": 1.045, "abv": 5.9, "brix": 11.2 },
+        { "sg": 1.050, "abv": 6.5, "brix": 12.3 },
+        { "sg": 1.055, "abv": 7.2, "brix": 13.5 },
+        { "sg": 1.060, "abv": 7.8, "brix": 14.7 },
+        { "sg": 1.065, "abv": 8.5, "brix": 15.8 },
+        { "sg": 1.070, "abv": 9.1, "brix": 17.0 },
+        { "sg": 1.075, "abv": 9.8, "brix": 18.1 },
+        { "sg": 1.080, "abv": 10.4, "brix": 19.2 },
+        { "sg": 1.085, "abv": 11.1, "brix": 20.4 },
+        { "sg": 1.090, "abv": 11.7, "brix": 21.5 },
+        { "sg": 1.095, "abv": 12.4, "brix": 22.6 },
+        { "sg": 1.100, "abv": 13.0, "brix": 23.7 },
+        { "sg": 1.105, "abv": 13.7, "brix": 24.8 },
+        { "sg": 1.110, "abv": 14.3, "brix": 25.8 },
+        { "sg": 1.115, "abv": 15.0, "brix": 26.9 },
+        { "sg": 1.120, "abv": 15.6, "brix": 28.0 },
+        { "sg": 1.125, "abv": 16.3, "brix": 29.0 },
+        { "sg": 1.130, "abv": 16.9, "brix": 30.1 },
+        { "sg": 1.135, "abv": 17.6, "brix": 31.1 },
+        { "sg": 1.140, "abv": 18.3, "brix": 32.1 },
+        { "sg": 1.145, "abv": 18.9, "brix": 33.2 },
+        { "sg": 1.150, "abv": 19.6, "brix": 34.2 }
+    ],
+    "temperatureCorrection": [
+        { "temperatureF": 52.2, "correctionSg": -0.001, "correctionBrix": -0.2 },
+        { "temperatureF": 60.0, "correctionSg": 0.000, "correctionBrix": 0.0 },
+        { "temperatureF": 66.6, "correctionSg": 0.001, "correctionBrix": 0.2 },
+        { "temperatureF": 72.4, "correctionSg": 0.002, "correctionBrix": 0.4 }
+    ]
+}

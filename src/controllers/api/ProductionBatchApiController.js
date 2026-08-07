@@ -75,6 +75,32 @@ exports.store = async (req, res) => {
 
 };
 
+exports.update = async (req, res) => {
+
+    try {
+
+        const batch = await service.update(
+            req.params.id,
+            req.body
+        );
+
+        res.json({
+            success: true,
+            message: "Lote actualizado correctamente.",
+            data: batch
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
 exports.start = async (req, res) => {
 
     try {
@@ -110,6 +136,57 @@ exports.complete = async (req, res) => {
         res.json({
             success: true,
             message: "Lote completado correctamente.",
+            data: batch
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+exports.startSecondFermentation = async (req, res) => {
+
+    try {
+
+        const batch = await service.startSecondFermentation(
+            req.params.id
+        );
+
+        res.json({
+            success: true,
+            message: "Segunda fermentación iniciada.",
+            data: batch
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+exports.finishSecondFermentation = async (req, res) => {
+
+    try {
+
+        const batch = await service.finishSecondFermentation(
+            req.params.id,
+            req.body
+        );
+
+        res.json({
+            success: true,
+            message: "Segunda fermentación finalizada.",
             data: batch
         });
 

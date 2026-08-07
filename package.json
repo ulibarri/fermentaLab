@@ -9,7 +9,8 @@
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",
     "migration:create": "sequelize-cli migration:generate --name",
-    "seed": "node src/seeders/DatabaseSeeder.js"
+    "seed": "node src/seeders/DatabaseSeeder.js",
+    "test:hydrometer": "node src/tests/HydrometerConverter.test.js"
   },
   "keywords": [],
   "author": "",

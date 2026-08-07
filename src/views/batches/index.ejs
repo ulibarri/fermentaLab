@@ -1,0 +1,86 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Lotes de producción</h1>
+
+            <small class="text-muted">
+
+                Seguimiento de lotes FermentaLab
+
+            </small>
+
+        </div>
+
+        <button id="btnNuevo" class="btn btn-primary">
+
+            Nuevo Lote
+
+        </button>
+
+    </div>
+
+    <div id="loader" class="alert alert-info" style="display:none">
+
+        Cargando información...
+
+    </div>
+
+    <table id="tblBatches" class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Número de lote</th>
+
+                <th>Receta</th>
+
+                <th>Volumen planeado</th>
+
+                <th>Estado</th>
+
+                <th>Inicio</th>
+
+                <th>Volumen producido</th>
+
+                <th>Fin</th>
+
+                <th>Inicio F2</th>
+
+                <th width="320">
+
+                    Acciones
+
+                </th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="batchesTableBody">
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<%- include("form") %>
+
+<%- include("f2FinishForm") %>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+    <script src="/js/crud/CrudTable.js"></script>
+
+    <script src="/js/crud/CrudPage.js"></script>
+    <script src="/js/crud/CrudForm.js"></script>
+    <script src="/js/crud/CrudApi.js"></script>
+
+    <script src="/js/batches/batchApi.js"></script>
+    <script src="/js/batches/batchForm.js"></script>
+    <script src="/js/batches/f2FinishForm.js"></script>
+    <script src="/js/batches/batches.js"></script>

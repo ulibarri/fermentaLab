@@ -8,6 +8,7 @@ const Recipe = require("./Recipe");
 const RecipeVersion = require("./RecipeVersion");
 const RecipeIngredient = require("./RecipeIngredient");
 const ProductionBatch = require("./ProductionBatch");
+const ProductionMeasurement = require("./ProductionMeasurement");
 
 Category.hasMany(Product, {
 
@@ -159,6 +160,34 @@ ProductionBatch.belongsTo(
 
 );
 
+ProductionBatch.hasMany(
+
+    ProductionMeasurement,
+
+    {
+
+        foreignKey: "productionBatchId",
+
+        as: "measurements"
+
+    }
+
+);
+
+ProductionMeasurement.belongsTo(
+
+    ProductionBatch,
+
+    {
+
+        foreignKey: "productionBatchId",
+
+        as: "productionBatch"
+
+    }
+
+);
+
 module.exports = {
 
     sequelize,
@@ -177,5 +206,7 @@ module.exports = {
 
     RecipeIngredient,
 
-    ProductionBatch
+    ProductionBatch,
+
+    ProductionMeasurement
 };

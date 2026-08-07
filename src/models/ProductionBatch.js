@@ -103,6 +103,62 @@ const ProductionBatch = sequelize.define("ProductionBatch", {
 
     },
 
+    finalPh: {
+
+        type: DataTypes.DECIMAL(5, 2),
+
+        allowNull: true
+
+    },
+
+    finalBrix: {
+
+        type: DataTypes.DECIMAL(5, 2),
+
+        allowNull: true
+
+    },
+
+    finalSpecificGravity: {
+
+        type: DataTypes.DECIMAL(6, 4),
+
+        allowNull: true
+
+    },
+
+    estimatedAlcohol: {
+
+        type: DataTypes.DECIMAL(5, 2),
+
+        allowNull: true
+
+    },
+
+    finalTemperature: {
+
+        type: DataTypes.DECIMAL(5, 2),
+
+        allowNull: true
+
+    },
+
+    ambientTemperature: {
+
+        type: DataTypes.DECIMAL(5, 2),
+
+        allowNull: true
+
+    },
+
+    carbonationNotes: {
+
+        type: DataTypes.TEXT,
+
+        allowNull: true
+
+    },
+
     createdAt: {
 
         type: DataTypes.DATE,

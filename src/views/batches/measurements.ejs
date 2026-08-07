@@ -1,0 +1,96 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Mediciones</h1>
+
+            <small class="text-muted">
+
+                Lote <%= batch.batchNumber %>
+
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/batches" class="btn btn-outline-secondary me-2">
+
+                Volver a Lotes
+
+            </a>
+
+            <button id="btnNuevaMedicion" class="btn btn-primary">
+
+                Nueva Medición
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <div id="loader" class="alert alert-info" style="display:none">
+
+        Cargando información...
+
+    </div>
+
+    <table id="tblMeasurements" class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Fecha</th>
+
+                <th>Fase</th>
+
+                <th>pH</th>
+
+                <th>°Brix</th>
+
+                <th>SG</th>
+
+                <th>Temp. Líquido</th>
+
+                <th>Temp. Ambiente</th>
+
+                <th>PSI</th>
+
+                <th width="180">
+
+                    Acciones
+
+                </th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="measurementsTableBody">
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<%- include("measurementForm") %>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+    <script src="/js/crud/CrudTable.js"></script>
+
+    <script src="/js/crud/CrudPage.js"></script>
+    <script src="/js/crud/CrudForm.js"></script>
+
+    <script src="/js/batches/measurementApi.js"></script>
+    <script src="/js/batches/measurementForm.js"></script>
+    <script src="/js/batches/measurements.js"></script>
+
+    <script>
+        window.BATCH_ID = <%= batch.id %>;
+    </script>

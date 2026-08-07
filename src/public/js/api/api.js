@@ -68,11 +68,15 @@ class Api {
 
     }
 
-    static delete(url) {
+    static delete(url, body) {
 
         return this.request(url, {
 
-            method: "DELETE"
+            method: "DELETE",
+
+            ...(body !== undefined
+                ? { body: JSON.stringify(body) }
+                : {})
 
         });
 

@@ -154,6 +154,12 @@ class CrudPage {
         }
 
     }
+    async start(id) {
+
+    }
+    async complete(id) {
+
+    }
     beforeSave(entity) {
 
         return entity;

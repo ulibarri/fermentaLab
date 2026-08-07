@@ -10,6 +10,7 @@ const unitApiRoutes = require("./routes/api/units");
 const ingredientApiRoutes = require("./routes/api/ingredients");
 const recipeApiRoutes = require("./routes/api/recipes");
 const batchApiRoutes = require("./routes/api/batches");
+const measurementApiRoutes = require("./routes/api/measurements");
 
 
 
@@ -50,6 +51,10 @@ app.use("/api/recipes", recipeApiRoutes);
 app.use(
     "/api/batches",
     batchApiRoutes
+);
+app.use(
+    "/api/measurements",
+    measurementApiRoutes
 );
 
 
