@@ -11,6 +11,7 @@ const ingredientApiRoutes = require("./routes/api/ingredients");
 const recipeApiRoutes = require("./routes/api/recipes");
 const batchApiRoutes = require("./routes/api/batches");
 const measurementApiRoutes = require("./routes/api/measurements");
+const carbonationApiRoutes = require("./routes/api/carbonation");
 
 
 
@@ -27,6 +28,15 @@ app.use(
         path.join(
             __dirname,
             "../node_modules/bootstrap/dist"
+        )
+    )
+);
+app.use(
+    "/chartjs",
+    express.static(
+        path.join(
+            __dirname,
+            "../node_modules/chart.js/dist"
         )
     )
 );
@@ -55,6 +65,10 @@ app.use(
 app.use(
     "/api/measurements",
     measurementApiRoutes
+);
+app.use(
+    "/api/carbonation",
+    carbonationApiRoutes
 );
 
 

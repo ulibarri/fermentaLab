@@ -53,6 +53,14 @@ const ProductionMeasurement = sequelize.define("ProductionMeasurement", {
 
     },
 
+    brixLafmate: {
+
+        type: DataTypes.DECIMAL(5, 2),
+
+        allowNull: true
+
+    },
+
     specificGravity: {
 
         type: DataTypes.DECIMAL(6, 4),
@@ -88,6 +96,14 @@ const ProductionMeasurement = sequelize.define("ProductionMeasurement", {
     psi: {
 
         type: DataTypes.DECIMAL(10, 3),
+
+        allowNull: true
+
+    },
+
+    co2Volumes: {
+
+        type: DataTypes.DECIMAL(6, 3),
 
         allowNull: true
 

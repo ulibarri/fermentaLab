@@ -54,6 +54,29 @@ exports.storeForBatch = async (req, res) => {
 
 };
 
+exports.maturation = async (req, res) => {
+
+    try {
+
+        const prediction =
+            await service.getMaturationPrediction(req.params.id);
+
+        res.json({
+            success: true,
+            data: prediction
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
 exports.update = async (req, res) => {
 
     try {

@@ -47,73 +47,77 @@
 
                     </div>
 
-                    <div class="row">
+                    <div id="f1FinalFieldsGroup">
 
-                        <div class="col-6 mb-3">
+                        <div class="row">
 
-                            <label for="ph" class="form-label">
-                                pH
-                            </label>
+                            <div class="col-6 mb-3">
 
-                            <input type="number" step="0.01" id="ph" name="ph" class="form-control">
+                                <label for="specificGravity" class="form-label">
+                                    SG
+                                </label>
 
-                        </div>
+                                <input type="number" step="0.0001" id="specificGravity" name="specificGravity" class="form-control">
 
-                        <div class="col-6 mb-3">
+                            </div>
 
-                            <label for="brix" class="form-label">
-                                °Brix
-                            </label>
+                            <div class="col-6 mb-3">
 
-                            <input type="number" step="0.01" id="brix" name="brix" class="form-control">
+                                <label for="estimatedAlcohol" class="form-label">
+                                    % Alcohol
+                                </label>
 
-                        </div>
+                                <input type="number" step="0.01" id="estimatedAlcohol" name="estimatedAlcohol" class="form-control">
 
-                    </div>
-
-                    <div class="row">
-
-                        <div class="col-6 mb-3">
-
-                            <label for="specificGravity" class="form-label">
-                                SG
-                            </label>
-
-                            <input type="number" step="0.0001" id="specificGravity" name="specificGravity" class="form-control">
+                            </div>
 
                         </div>
 
-                        <div class="col-6 mb-3">
+                        <div class="row">
 
-                            <label for="estimatedAlcohol" class="form-label">
-                                Alcohol estimado (%)
-                            </label>
+                            <div class="col-6 mb-3">
 
-                            <input type="number" step="0.01" id="estimatedAlcohol" name="estimatedAlcohol" class="form-control">
+                                <label for="brix" class="form-label">
+                                    °Brix
+                                </label>
+
+                                <input type="number" step="0.01" id="brix" name="brix" class="form-control">
+
+                            </div>
+
+                            <div class="col-6 mb-3">
+
+                                <label for="ph" class="form-label">
+                                    pH
+                                </label>
+
+                                <input type="number" step="0.01" id="ph" name="ph" class="form-control">
+
+                            </div>
 
                         </div>
 
-                    </div>
+                        <div class="row">
 
-                    <div class="row">
+                            <div class="col-6 mb-3">
 
-                        <div class="col-6 mb-3">
+                                <label for="liquidTemperature" class="form-label">
+                                    Temp. líquido (°C)
+                                </label>
 
-                            <label for="liquidTemperature" class="form-label">
-                                Temp. líquido (°C)
-                            </label>
+                                <input type="number" step="0.01" id="liquidTemperature" name="liquidTemperature" class="form-control">
 
-                            <input type="number" step="0.01" id="liquidTemperature" name="liquidTemperature" class="form-control">
+                            </div>
 
-                        </div>
+                            <div class="col-6 mb-3">
 
-                        <div class="col-6 mb-3">
+                                <label for="brixLafmate" class="form-label">
+                                    Brix LAFmate
+                                </label>
 
-                            <label for="ambientTemperature" class="form-label">
-                                Temp. ambiente (°C)
-                            </label>
+                                <input type="number" step="0.01" id="brixLafmate" name="brixLafmate" class="form-control">
 
-                            <input type="number" step="0.01" id="ambientTemperature" name="ambientTemperature" class="form-control">
+                            </div>
 
                         </div>
 
@@ -121,11 +125,41 @@
 
                     <div class="mb-3">
 
+                        <label for="ambientTemperature" class="form-label">
+                            Temp. ambiente (°C)
+                        </label>
+
+                        <input type="number" step="0.01" id="ambientTemperature" name="ambientTemperature" class="form-control">
+
+                    </div>
+
+                    <div class="mb-3" id="psiGroup">
+
                         <label for="psi" class="form-label">
                             PSI
                         </label>
 
                         <input type="number" step="0.001" id="psi" name="psi" class="form-control">
+
+                        <small class="form-text text-muted">
+                            Solo aplica en la fase F2 (F1 es aeróbica).
+                        </small>
+
+                    </div>
+
+                    <div class="mb-3" id="co2Group">
+
+                        <label class="form-label">
+                            CO2 estimado (volumes)
+                        </label>
+
+                        <div class="form-control-plaintext fw-bold" id="co2PreviewValue">
+                            —
+                        </div>
+
+                        <small class="form-text text-muted">
+                            Calculado automáticamente a partir de PSI y temperatura ambiente. No se captura manualmente.
+                        </small>
 
                     </div>
 

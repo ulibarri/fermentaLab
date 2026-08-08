@@ -7,6 +7,12 @@ const ProductionMeasurementRepository =
 const ProductionBatchRepository =
     require("../repositories/ProductionBatchRepository");
 
+const CarbonationCalculator =
+    require("../utils/CarbonationCalculator");
+
+const MaturationCalculator =
+    require("../utils/MaturationCalculator");
+
 const VALID_PHASES = ["F1", "F2", "FINAL"];
 
 class ProductionMeasurementService
@@ -73,6 +79,16 @@ class ProductionMeasurementService
 
         }
 
+        if (data.brixLafmate !== undefined && data.brixLafmate !== null) {
+
+            if (data.brixLafmate < 0) {
+
+                throw new Error("brixLafmate debe ser mayor o igual a 0.");
+
+            }
+
+        }
+
         if (data.specificGravity !== undefined && data.specificGravity !== null) {
 
             if (data.specificGravity <= 0) {
@@ -95,7 +111,72 @@ class ProductionMeasurementService
 
     }
 
+    calculateCo2Volumes(phase, psi, ambientTemperature) {
+
+        if (phase !== "F2") {
+
+            return null;
+
+        }
+
+        if (psi === null || psi === undefined) {
+
+            return null;
+
+        }
+
+        if (ambientTemperature === null || ambientTemperature === undefined) {
+
+            return null;
+
+        }
+
+        try {
+
+            const result =
+                CarbonationCalculator.calculate({
+
+                    psi,
+
+                    temperature: ambientTemperature
+
+                });
+
+            return result.co2Volumes;
+
+        } catch (err) {
+
+            // No bloqueamos el guardado de la medición si la combinación
+            // de PSI/temperatura queda fuera del dominio de la fórmula;
+            // simplemente no se puede estimar el CO2 para esa lectura.
+
+            return null;
+
+        }
+
+    }
+
     buildValues(data) {
+
+        const isF2 =
+            data.phase === "F2";
+
+        const psi =
+            isF2 ? (data.psi ?? null) : 0;
+
+        const ambientTemperature =
+            data.ambientTemperature ?? null;
+
+        const co2Volumes =
+            this.calculateCo2Volumes(
+
+                data.phase,
+
+                psi,
+
+                ambientTemperature
+
+            );
 
         return {
 
@@ -107,15 +188,19 @@ class ProductionMeasurementService
 
             brix: data.brix ?? null,
 
+            brixLafmate: data.brixLafmate ?? null,
+
             specificGravity: data.specificGravity ?? null,
 
             estimatedAlcohol: data.estimatedAlcohol ?? null,
 
             liquidTemperature: data.liquidTemperature ?? null,
 
-            ambientTemperature: data.ambientTemperature ?? null,
+            ambientTemperature,
 
-            psi: data.psi ?? null,
+            psi,
+
+            co2Volumes,
 
             notes: data.notes ?? null
 
@@ -135,6 +220,68 @@ class ProductionMeasurementService
         }
 
         return await this.repository.findByBatch(batchId);
+
+    }
+
+    async getMaturationPrediction(batchId, phase = "F1") {
+
+        const batch =
+            await this.batchRepository.findById(batchId);
+
+        if (!batch) {
+
+            throw new Error("Batch not found");
+
+        }
+
+        const recipeVersion =
+            batch.recipeVersion;
+
+        if (!recipeVersion || !recipeVersion.maturationMetric) {
+
+            return {
+
+                configured: false,
+
+                message: "Este lote no tiene configurado un objetivo de maduración en su receta."
+
+            };
+
+        }
+
+        const measurements =
+            await this.repository.findByBatch(batchId);
+
+        const toNumberOrNull = value =>
+
+            value === null || value === undefined
+                ? null
+                : Number(value);
+
+        const analysis =
+            MaturationCalculator.analyze({
+
+                measurements,
+
+                metric: recipeVersion.maturationMetric,
+
+                targetValue: toNumberOrNull(recipeVersion.maturationTarget),
+
+                rateThreshold: toNumberOrNull(recipeVersion.maturationRateThreshold),
+
+                targetTolerance: toNumberOrNull(recipeVersion.maturationTargetTolerance),
+
+                phase
+
+            });
+
+        return {
+
+            configured: true,
+
+            ...analysis
+
+        };
 
     }
 

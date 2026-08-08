@@ -18,6 +18,18 @@ class MeasurementApi {
 
     }
 
+    async getMaturation() {
+
+        const response = await Api.get(
+
+            `/api/batches/${this.batchId}/maturation`
+
+        );
+
+        return response.data;
+
+    }
+
     async create(entity) {
 
         const response = await Api.post(

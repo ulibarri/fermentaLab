@@ -33,5 +33,7 @@ router.get("/:id/measurements", measurementController.indexByBatch);
 
 router.post("/:id/measurements", measurementController.storeForBatch);
 
+router.get("/:id/maturation", measurementController.maturation);
+
 module.exports =
     router;

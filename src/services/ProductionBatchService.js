@@ -18,6 +18,9 @@ const Category =
 const BatchNumberGenerator =
     require("../utils/BatchNumberGenerator");
 
+const ProductionMeasurementRepository =
+    require("../repositories/ProductionMeasurementRepository");
+
 
 class ProductionBatchService
     extends BaseService {
@@ -29,6 +32,9 @@ class ProductionBatchService
             new ProductionBatchRepository()
 
         );
+
+        this.measurementRepository =
+            new ProductionMeasurementRepository();
 
     }
     async create(data, transaction = null) {
@@ -507,35 +513,59 @@ class ProductionBatchService
 
                 }
 
+                if (data.skipF2) {
+
+                    batch.status =
+                        "F2_SKIPPED";
+
+                    batch.secondFermentFinishedAt =
+                        new Date();
+
+                    batch.carbonationNotes =
+                        data.reason ?? null;
+
+                    await this.repository.update(
+
+                        batchId,
+
+                        batch,
+
+                        transaction
+
+                    );
+
+                    return await this.repository.findById(
+                        batchId,
+                        transaction
+                    );
+
+                }
+
+                const hasF2Measurements =
+                    await this.measurementRepository.existsByBatchAndPhase(
+
+                        batchId,
+
+                        "F2"
+
+                    );
+
+                if (!hasF2Measurements) {
+
+                    throw new Error(
+                        "No se han registrado mediciones de F2 para este lote. Regístralas con el botón \"Mediciones\" antes de finalizar, o finaliza el lote sin segunda fermentación."
+                    );
+
+                }
+
                 batch.status =
                     "F2_DONE";
 
                 batch.secondFermentFinishedAt =
                     new Date();
 
-                batch.finalPsiReading =
-                    data.finalPsiReading;
-
-                batch.finalPh =
-                    data.finalPh;
-
-                batch.finalBrix =
-                    data.finalBrix;
-
-                batch.finalSpecificGravity =
-                    data.finalSpecificGravity;
-
-                batch.estimatedAlcohol =
-                    data.estimatedAlcohol;
-
-                batch.finalTemperature =
-                    data.finalTemperature;
-
-                batch.ambientTemperature =
-                    data.ambientTemperature;
-
                 batch.carbonationNotes =
-                    data.carbonationNotes;
+                    data.carbonationNotes ?? null;
 
                 await this.repository.update(
 

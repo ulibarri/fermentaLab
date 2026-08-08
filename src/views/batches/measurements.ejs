@@ -38,6 +38,114 @@
 
     </div>
 
+    <div class="card mb-3">
+
+        <div class="card-body">
+
+            <div class="row gy-2">
+
+                <div class="col-md-3">
+                    <strong>Lote:</strong> <%= batch.batchNumber %>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Producto:</strong> <%= batch.recipeVersion?.recipe?.product?.name ?? "—" %>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Receta:</strong> <%= batch.recipeVersion?.recipe?.name ?? "—" %>
+                </div>
+
+                <div class="col-md-3">
+
+                    <strong>Estado:</strong>
+
+                    <% const statusColors = { PLANNED: "secondary", IN_PROGRESS: "primary", COMPLETED: "success", F2_STARTED: "info", F2_DONE: "dark", F2_SKIPPED: "warning", CANCELLED: "danger" }; %>
+
+                    <span class="badge bg-<%= statusColors[batch.status] || 'secondary' %>"><%= batch.status %></span>
+
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Volumen objetivo:</strong> <%= batch.targetVolume ?? "—" %> L
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <h5 class="mb-3">Resumen por fase</h5>
+
+    <div class="row mb-4">
+
+        <div class="col-md-4">
+
+            <div class="card h-100">
+
+                <div class="card-header">F1 – Primera fermentación</div>
+
+                <div class="card-body" id="summaryF1"></div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="card h-100">
+
+                <div class="card-header">F2 – Segunda fermentación</div>
+
+                <div class="card-body" id="summaryF2"></div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="card h-100">
+
+                <div class="card-header">FINAL</div>
+
+                <div class="card-body" id="summaryFinal"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Predicción de maduración F1</div>
+
+        <div class="card-body" id="maturationPrediction">
+
+            <p class="text-muted mb-0">Cargando...</p>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Evolución y predicción — F1</div>
+
+        <div class="card-body">
+
+            <p class="text-muted mb-0" id="maturationChartMessage" style="display:none"></p>
+
+            <canvas id="maturationChart" height="110"></canvas>
+
+        </div>
+
+    </div>
+
+    <h5 class="mb-3">Historial cronológico</h5>
+
     <table id="tblMeasurements" class="table table-striped table-hover">
 
         <thead class="table-dark">
@@ -48,17 +156,25 @@
 
                 <th>Fase</th>
 
-                <th>pH</th>
+                <th>SG</th>
+
+                <th>Alcohol</th>
 
                 <th>°Brix</th>
 
-                <th>SG</th>
+                <th>pH</th>
 
                 <th>Temp. Líquido</th>
+
+                <th>Brix LAFmate</th>
 
                 <th>Temp. Ambiente</th>
 
                 <th>PSI</th>
+
+                <th>CO2 (volumes)</th>
+
+                <th>Notas</th>
 
                 <th width="180">
 
@@ -87,10 +203,14 @@
     <script src="/js/crud/CrudPage.js"></script>
     <script src="/js/crud/CrudForm.js"></script>
 
+    <script src="/chartjs/chart.umd.min.js"></script>
+
     <script src="/js/batches/measurementApi.js"></script>
     <script src="/js/batches/measurementForm.js"></script>
+    <script src="/js/batches/maturationChart.js"></script>
     <script src="/js/batches/measurements.js"></script>
 
     <script>
         window.BATCH_ID = <%= batch.id %>;
+        window.BATCH_STATUS = "<%= batch.status %>";
     </script>

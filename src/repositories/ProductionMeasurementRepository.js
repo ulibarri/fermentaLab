@@ -33,6 +33,24 @@ class ProductionMeasurementRepository
 
     }
 
+    async existsByBatchAndPhase(productionBatchId, phase) {
+
+        const count = await this.model.count({
+
+            where: {
+
+                productionBatchId,
+
+                phase
+
+            }
+
+        });
+
+        return count > 0;
+
+    }
+
 }
 
 module.exports =

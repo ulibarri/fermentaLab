@@ -185,6 +185,8 @@ class BatchesPage extends CrudPage {
 
             F2_DONE: "dark",
 
+            F2_SKIPPED: "warning",
+
             CANCELLED: "danger"
 
         };
@@ -377,6 +379,88 @@ class BatchesPage extends CrudPage {
 
     }
 
+    async onFinishF2Click(id) {
+
+        let measurements = [];
+
+        try {
+
+            measurements =
+                await new MeasurementApi(id).getAll();
+
+        }
+
+        catch (err) {
+
+            UI.error(err.message);
+
+            return;
+
+        }
+
+        const hasF2Measurements =
+            measurements.some(
+                m => m.phase === "F2"
+            );
+
+        if (hasF2Measurements) {
+
+            this.f2FinishForm.openFor(id);
+
+            return;
+
+        }
+
+        const wantsToSkip = await UI.confirm(
+            "No se han registrado mediciones de F2 para este lote. ¿Deseas finalizar SIN segunda fermentación? (ej. lote contaminado)"
+        );
+
+        if (wantsToSkip) {
+
+            await this.skipSecondFermentation(id);
+
+            return;
+
+        }
+
+        UI.error(
+            "Registra las lecturas de F2 con el botón \"Mediciones\" antes de finalizar."
+        );
+
+    }
+
+    async skipSecondFermentation(id) {
+
+        const reason =
+            prompt("Motivo (opcional):") ||
+            null;
+
+        try {
+
+            await this.api.finishSecondFermentation(id, {
+
+                skipF2: true,
+
+                reason
+
+            });
+
+            UI.success(
+                "Lote finalizado sin segunda fermentación."
+            );
+
+            await this.load();
+
+        }
+
+        catch (err) {
+
+            UI.error(err.message);
+
+        }
+
+    }
+
     async saveF2Finish(event) {
 
         event.preventDefault();
@@ -423,7 +507,7 @@ class BatchesPage extends CrudPage {
 
             btnMeasurements.textContent =
 
-                "Mediciones";
+                "Ver mediciones";
 
             btnMeasurements.onclick =
 
@@ -520,7 +604,7 @@ class BatchesPage extends CrudPage {
 
             btnFinishF2.onclick =
 
-                () => this.f2FinishForm.openFor(batch.id);
+                () => this.onFinishF2Click(batch.id);
 
             td.appendChild(btnFinishF2);
 

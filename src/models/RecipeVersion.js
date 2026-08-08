@@ -68,6 +68,38 @@ const RecipeVersion = sequelize.define("RecipeVersion", {
 
     },
 
+    maturationMetric: {
+
+        type: DataTypes.STRING(30),
+
+        allowNull: true
+
+    },
+
+    maturationTarget: {
+
+        type: DataTypes.DECIMAL(10, 4),
+
+        allowNull: true
+
+    },
+
+    maturationRateThreshold: {
+
+        type: DataTypes.DECIMAL(10, 4),
+
+        allowNull: true
+
+    },
+
+    maturationTargetTolerance: {
+
+        type: DataTypes.DECIMAL(10, 4),
+
+        allowNull: true
+
+    },
+
 
 }, {
 

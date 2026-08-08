@@ -10,6 +10,165 @@ class MeasurementForm extends CrudForm {
 
         );
 
+        this._co2DebounceTimer = null;
+
+        this.form.phase.addEventListener(
+
+            "change",
+
+            () => this.updateFieldsForPhase()
+
+        );
+
+        this.form.psi.addEventListener(
+
+            "input",
+
+            () => this.scheduleCo2Estimate()
+
+        );
+
+        this.form.ambientTemperature.addEventListener(
+
+            "input",
+
+            () => this.scheduleCo2Estimate()
+
+        );
+
+    }
+
+    updateFieldsForPhase() {
+
+        const isF2 =
+            this.form.phase.value === "F2";
+
+        const psiGroup =
+            document.getElementById("psiGroup");
+
+        if (psiGroup) {
+
+            psiGroup.style.display =
+                isF2 ? "block" : "none";
+
+        }
+
+        this.form.psi.disabled = !isF2;
+
+        if (!isF2) {
+
+            this.form.psi.value = 0;
+
+        }
+
+        const co2Group =
+            document.getElementById("co2Group");
+
+        if (co2Group) {
+
+            co2Group.style.display =
+                isF2 ? "block" : "none";
+
+        }
+
+        if (!isF2) {
+
+            this.setCo2Preview(null);
+
+        }
+
+        const f1FinalFieldsGroup =
+            document.getElementById("f1FinalFieldsGroup");
+
+        if (f1FinalFieldsGroup) {
+
+            f1FinalFieldsGroup.style.display =
+                isF2 ? "none" : "block";
+
+        }
+
+        if (isF2) {
+
+            this.scheduleCo2Estimate();
+
+        }
+
+    }
+
+    setCo2Preview(co2Volumes) {
+
+        const el =
+            document.getElementById("co2PreviewValue");
+
+        if (!el) {
+
+            return;
+
+        }
+
+        el.textContent =
+            co2Volumes !== null && co2Volumes !== undefined
+                ? `≈ ${co2Volumes} volumes`
+                : "—";
+
+    }
+
+    scheduleCo2Estimate() {
+
+        clearTimeout(this._co2DebounceTimer);
+
+        this._co2DebounceTimer =
+            setTimeout(
+
+                () => this.estimateCo2(),
+
+                400
+
+            );
+
+    }
+
+    async estimateCo2() {
+
+        if (this.form.phase.value !== "F2") {
+
+            return;
+
+        }
+
+        const psi =
+            this.numberOrNull(this.form.psi.value);
+
+        const temperature =
+            this.numberOrNull(this.form.ambientTemperature.value);
+
+        if (psi === null || temperature === null) {
+
+            this.setCo2Preview(null);
+
+            return;
+
+        }
+
+        try {
+
+            const response =
+                await Api.post(
+
+                    "/api/carbonation/estimate",
+
+                    { psi, temperature }
+
+                );
+
+            this.setCo2Preview(response.data.co2Volumes);
+
+        } catch (err) {
+
+            this.setCo2Preview(null);
+
+        }
+
     }
 
     numberOrNull(value) {
@@ -55,6 +214,9 @@ class MeasurementForm extends CrudForm {
             brix:
                 this.numberOrNull(this.form.brix.value),
 
+            brixLafmate:
+                this.numberOrNull(this.form.brixLafmate.value),
+
             specificGravity:
                 this.numberOrNull(this.form.specificGravity.value),
 
@@ -68,7 +230,9 @@ class MeasurementForm extends CrudForm {
                 this.numberOrNull(this.form.ambientTemperature.value),
 
             psi:
-                this.numberOrNull(this.form.psi.value),
+                this.form.phase.value === "F2"
+                    ? this.numberOrNull(this.form.psi.value)
+                    : 0,
 
             notes:
                 this.form.notes.value || null
@@ -95,6 +259,9 @@ class MeasurementForm extends CrudForm {
         this.form.brix.value =
             measurement.brix ?? "";
 
+        this.form.brixLafmate.value =
+            measurement.brixLafmate ?? "";
+
         this.form.specificGravity.value =
             measurement.specificGravity ?? "";
 
@@ -116,6 +283,10 @@ class MeasurementForm extends CrudForm {
         this.submitButton.textContent =
             "Actualizar";
 
+        this.updateFieldsForPhase();
+
+        this.setCo2Preview(measurement.co2Volumes ?? null);
+
     }
 
     openNew() {
@@ -124,6 +295,8 @@ class MeasurementForm extends CrudForm {
 
         this.form.measurementDate.value =
             this.toDatetimeLocalValue(new Date().toISOString());
+
+        this.updateFieldsForPhase();
 
         document
             .getElementById("modalMeasurementTitle")
