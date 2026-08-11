@@ -35,5 +35,7 @@ router.post("/:id/measurements", measurementController.storeForBatch);
 
 router.get("/:id/maturation", measurementController.maturation);
 
+router.get("/:id/maturation/evaluation", measurementController.maturationEvaluation);
+
 module.exports =
     router;

@@ -132,6 +132,26 @@
 
     <div class="card mb-4">
 
+        <div class="card-header d-flex justify-content-between align-items-center">
+
+            <span>Predicción actual (auditable)</span>
+
+            <button id="btnPredictionHistory" class="btn btn-outline-secondary btn-sm">
+                Historial
+            </button>
+
+        </div>
+
+        <div class="card-body" id="currentPrediction">
+
+            <p class="text-muted mb-0">Cargando...</p>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
         <div class="card-header">Evolución y predicción — F1</div>
 
         <div class="card-body">
@@ -140,6 +160,16 @@
 
             <canvas id="maturationChart" height="110"></canvas>
 
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Evaluación histórica</div>
+
+        <div class="card-body" id="maturationEvaluation">
+            <p class="text-muted mb-0">Cargando...</p>
         </div>
 
     </div>
@@ -195,6 +225,7 @@
 </div>
 
 <%- include("measurementForm") %>
+<%- include("predictionModals") %>
 
     <script src="/js/api/api.js"></script>
     <script src="/js/ui/ui.js"></script>
@@ -206,6 +237,7 @@
     <script src="/chartjs/chart.umd.min.js"></script>
 
     <script src="/js/batches/measurementApi.js"></script>
+    <script src="/js/batches/predictionApi.js"></script>
     <script src="/js/batches/measurementForm.js"></script>
     <script src="/js/batches/maturationChart.js"></script>
     <script src="/js/batches/measurements.js"></script>

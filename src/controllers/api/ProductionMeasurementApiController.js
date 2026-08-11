@@ -77,6 +77,29 @@ exports.maturation = async (req, res) => {
 
 };
 
+exports.maturationEvaluation = async (req, res) => {
+
+    try {
+
+        const evaluation =
+            await service.getMaturationEvaluation(req.params.id);
+
+        res.json({
+            success: true,
+            data: evaluation
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
 exports.update = async (req, res) => {
 
     try {

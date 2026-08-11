@@ -1,0 +1,415 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Calibraciones de modelos</h1>
+
+            <small class="text-muted">
+
+                Aprobar, activar y desactivar correcciones al modelo de predicción de maduración
+
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/maturation/statistics" class="btn btn-outline-secondary me-2">
+
+                Precisión histórica
+
+            </a>
+
+            <a href="/maturation/dashboard" class="btn btn-outline-primary me-2">
+
+                Dashboard de desempeño
+
+            </a>
+
+            <a href="/maturation/alerts" class="btn btn-outline-danger me-2">
+
+                Centro de alertas
+
+                <span id="navAlertsBadge" class="badge bg-danger ms-1" style="display:none"></span>
+
+            </a>
+
+            <a href="/maturation/recalibration-proposals" class="btn btn-outline-success me-2">
+
+                Propuestas de recalibración
+
+            </a>
+
+            <button id="btnNuevaCalibracion" class="btn btn-primary">
+
+                Nueva calibración
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <div id="loader" class="alert alert-info" style="display:none">
+
+        Cargando información...
+
+    </div>
+
+    <p class="text-muted small">
+
+        Una calibración siempre está acotada a un modelo (LINEAR / EXPONENTIAL) y a una versión de receta específica -- nunca se aplica a otra versión ni se comparte entre productos. Solo la calibración ACTIVE de cada combinación afecta a las predicciones nuevas; las predicciones ya generadas nunca se recalculan.
+
+    </p>
+
+    <!-- Entrega 2.6.1.18 -- alertas de salud (sección 14). Solo se
+         llenan cuando alguna calibración ACTIVE sale DEGRADED en
+         GET /calibrations/health -- nunca desactiva ni crea nada por
+         sí sola, solo ofrece atajos a las acciones manuales. -->
+    <div id="calibrationHealthAlerts"></div>
+
+    <table id="tblCalibrations" class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Modelo</th>
+
+                <th>Receta / versión</th>
+
+                <th>Versión</th>
+
+                <th>Offset</th>
+
+                <th>Muestras</th>
+
+                <th>Bias origen</th>
+
+                <th>Estado</th>
+
+                <th>Salud</th>
+
+                <th>Motivo</th>
+
+                <th width="260">Acciones</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="calibrationsTableBody">
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<div class="modal fade" id="modalCalibration" tabindex="-1" aria-labelledby="modalCalibrationTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <form id="calibrationForm">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title" id="modalCalibrationTitle">
+                        Nueva calibración
+                    </h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Entrega 2.6.1.19 -- cuando esta propuesta es un
+                         REEMPLAZO (viene de "Crear nueva calibración"
+                         sobre una calibración DEGRADED, sección 6),
+                         parentCalibrationId queda fijo y modelType/
+                         recipeVersionId se muestran bloqueados: se
+                         heredan de la calibración padre, nunca se
+                         vuelven a elegir (evita crear por accidente una
+                         calibración "huérfana" en otro modelo/receta). -->
+                    <input type="hidden" id="calParentCalibrationId" name="parentCalibrationId" value="">
+
+                    <div id="calReplacementNotice" class="alert alert-secondary small py-2 px-3 mb-3" style="display:none"></div>
+
+                    <div class="mb-3">
+
+                        <label for="calModelType" class="form-label">Modelo</label>
+
+                        <select id="calModelType" name="modelType" class="form-select" required>
+
+                            <option value="" disabled selected>Selecciona un modelo</option>
+
+                            <option value="LINEAR">LINEAR</option>
+
+                            <option value="EXPONENTIAL">EXPONENTIAL</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="calRecipeVersionId" class="form-label">Receta / versión</label>
+
+                        <select id="calRecipeVersionId" name="recipeVersionId" class="form-select" required>
+
+                            <option value="" disabled selected>Selecciona una receta</option>
+
+                            <% recipeVersions.forEach(function (rv) { %>
+
+                                <option value="<%= rv.id %>" data-product-id="<%= rv.recipe && rv.recipe.product ? rv.recipe.product.id : '' %>">
+
+                                    <%= rv.recipe && rv.recipe.product ? (rv.recipe.product.name + " / ") : "" %><%= rv.recipe ? rv.recipe.name : ("Receta " + rv.recipeId) %> (v<%= rv.version %>)
+
+                                </option>
+
+                            <% }); %>
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="calOffsetHours" class="form-label">Offset (horas)</label>
+
+                        <input type="number" step="0.01" id="calOffsetHours" name="offsetHours" class="form-control" required>
+
+                        <small class="text-muted">Positivo: la predicción final se atrasa. Negativo: se adelanta.</small>
+
+                    </div>
+
+                    <div class="row">
+
+                        <div class="col-6 mb-3">
+
+                            <label for="calSampleSize" class="form-label">Muestras (N)</label>
+
+                            <input type="number" id="calSampleSize" name="sampleSize" class="form-control" readonly>
+
+                        </div>
+
+                        <div class="col-6 mb-3">
+
+                            <label for="calBiasHours" class="form-label">Bias observado (h)</label>
+
+                            <input type="number" step="0.01" id="calBiasHours" name="biasHours" class="form-control" readonly>
+
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="calReason" class="form-label">Motivo</label>
+
+                        <textarea id="calReason" name="reason" class="form-control" rows="3" placeholder="Por qué se propone esta calibración"></textarea>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+                    <button type="submit" class="btn btn-success">Guardar propuesta</button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.6.1.17 -- Evaluación de efectividad de la calibración
+     (sección 13/14): tarjeta Original vs. Calibrado en vivo +
+     historial de evaluaciones guardadas. Solo lectura salvo el botón
+     "Guardar evaluación" (POST .../evaluate), que nunca modifica la
+     calibración ni ninguna predicción -- solo agrega una fila nueva al
+     historial. -->
+<div class="modal fade" id="modalCalibrationEvaluation" tabindex="-1" aria-labelledby="modalCalibrationEvaluationTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalCalibrationEvaluationTitle">
+                    Evaluación de calibración
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div id="calibrationEvaluationCurrent">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+                <div class="d-flex justify-content-end mt-2 mb-4">
+
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnSaveCalibrationEvaluation">
+                        Guardar evaluación
+                    </button>
+
+                </div>
+
+                <!-- Entrega 2.6.1.18 -- estado de salud EN VIVO
+                     (sección 12/16), separado de la evaluación puntual
+                     de 2.6.1.17 de arriba: histórico vs. ventana
+                     reciente vs. ventana anterior, tendencia y
+                     recomendación de recalibración. -->
+                <p class="fw-bold mb-2">Salud de la calibración</p>
+
+                <div id="calibrationHealthSection" class="mb-4">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+                <!-- Entrega 2.6.1.27 -- evaluación post-activación
+                     (secciones 1-9): desempeño REAL medido después de
+                     activar la calibración, distinto de la simulación
+                     preactivación (arriba, sección 15 de 2.6.1.17) y de
+                     la salud EN VIVO (arriba, 2.6.1.18). -->
+                <p class="fw-bold mb-2">Evaluación post-activación</p>
+
+                <div id="calibrationPostActivationSection" class="mb-4">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+                <p class="fw-bold mb-2">Historial de evaluaciones</p>
+
+                <table class="table table-sm table-bordered mb-0">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Fecha</th>
+
+                            <th>Muestras</th>
+
+                            <th>MAE original</th>
+
+                            <th>MAE calibrado</th>
+
+                            <th>Mejora</th>
+
+                            <th>Resultado</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="calibrationEvaluationHistoryBody">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.6.1.19, sección 11/16 -- cadena de versiones de un
+     (modelType, recipeVersionId): v1 -> v2 -> v3, con un pequeño
+     timeline derivado de los timestamps ya presentes en cada fila
+     (createdAt/approvedAt/activatedAt/deactivatedAt/rejectedAt) -- no
+     requiere un endpoint de timeline aparte, GET .../versions ya trae
+     todo lo necesario. -->
+<div class="modal fade" id="modalCalibrationVersions" tabindex="-1" aria-labelledby="modalCalibrationVersionsTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalCalibrationVersionsTitle">
+                    Versiones de la calibración
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div id="calibrationVersionsBody">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.6.1.19, sección 8-10 -- comparación entre dos versiones.
+     Se abre siempre desde una fila concreta (la calibración "ancla");
+     el selector permite elegir cualquier OTRA versión de la misma
+     cadena (modelType+recipeVersionId) para comparar contra ella. -->
+<div class="modal fade" id="modalCalibrationComparison" tabindex="-1" aria-labelledby="modalCalibrationComparisonTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalCalibrationComparisonTitle">
+                    Comparar calibraciones
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-3">
+
+                    <label for="calComparisonOtherSelect" class="form-label">Comparar contra</label>
+
+                    <select id="calComparisonOtherSelect" class="form-select"></select>
+
+                </div>
+
+                <div id="calibrationComparisonBody">
+                    <p class="text-muted mb-0">Selecciona una versión para comparar.</p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/js/maturation/calibrationsApi.js"></script>
+    <script src="/js/maturation/alertBadge.js"></script>
+    <script src="/js/maturation/calibrations.js"></script>

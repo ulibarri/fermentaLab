@@ -9,6 +9,12 @@ const RecipeVersion = require("./RecipeVersion");
 const RecipeIngredient = require("./RecipeIngredient");
 const ProductionBatch = require("./ProductionBatch");
 const ProductionMeasurement = require("./ProductionMeasurement");
+const MaturationModelConfiguration = require("./MaturationModelConfiguration");
+const MaturationPrediction = require("./MaturationPrediction");
+const MaturationModelCalibration = require("./MaturationModelCalibration");
+const MaturationCalibrationEvaluation = require("./MaturationCalibrationEvaluation");
+const MaturationModelAlert = require("./MaturationModelAlert");
+const MaturationAlertAuditLog = require("./MaturationAlertAuditLog");
 
 Category.hasMany(Product, {
 
@@ -188,6 +194,332 @@ ProductionMeasurement.belongsTo(
 
 );
 
+RecipeVersion.hasMany(
+
+    MaturationModelConfiguration,
+
+    {
+
+        foreignKey: "recipeVersionId",
+
+        as: "modelConfigurations"
+
+    }
+
+);
+
+MaturationModelConfiguration.belongsTo(
+
+    RecipeVersion,
+
+    {
+
+        foreignKey: "recipeVersionId",
+
+        as: "recipeVersion"
+
+    }
+
+);
+
+ProductionBatch.hasMany(
+
+    MaturationPrediction,
+
+    {
+
+        foreignKey: "productionBatchId",
+
+        as: "predictions"
+
+    }
+
+);
+
+MaturationPrediction.belongsTo(
+
+    ProductionBatch,
+
+    {
+
+        foreignKey: "productionBatchId",
+
+        as: "productionBatch"
+
+    }
+
+);
+
+MaturationModelConfiguration.hasMany(
+
+    MaturationPrediction,
+
+    {
+
+        foreignKey: "modelConfigurationId",
+
+        as: "predictions"
+
+    }
+
+);
+
+MaturationPrediction.belongsTo(
+
+    MaturationModelConfiguration,
+
+    {
+
+        foreignKey: "modelConfigurationId",
+
+        as: "modelConfiguration"
+
+    }
+
+);
+
+// --- Entrega 2.6.1.16: MaturationModelCalibration -----------------
+
+RecipeVersion.hasMany(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "recipeVersionId",
+
+        as: "calibrations"
+
+    }
+
+);
+
+MaturationModelCalibration.belongsTo(
+
+    RecipeVersion,
+
+    {
+
+        foreignKey: "recipeVersionId",
+
+        as: "recipeVersion"
+
+    }
+
+);
+
+MaturationModelCalibration.hasMany(
+
+    MaturationPrediction,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "predictions"
+
+    }
+
+);
+
+MaturationPrediction.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "calibration"
+
+    }
+
+);
+
+// --- Entrega 2.6.1.19: cadena de versiones (self-referencial) ------
+// Una calibración "reemplazo" apunta a la que reemplaza vía
+// parentCalibrationId (sección 2) -- `as: "parentCalibration"` /
+// `as: "childCalibrations"` para no chocar con el resto de alias de
+// este modelo (recipeVersion/predictions/evaluations).
+
+MaturationModelCalibration.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "parentCalibrationId",
+
+        as: "parentCalibration"
+
+    }
+
+);
+
+MaturationModelCalibration.hasMany(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "parentCalibrationId",
+
+        as: "childCalibrations"
+
+    }
+
+);
+
+// --- Entrega 2.6.1.17: MaturationCalibrationEvaluation -------------
+
+MaturationModelCalibration.hasMany(
+
+    MaturationCalibrationEvaluation,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "evaluations"
+
+    }
+
+);
+
+MaturationCalibrationEvaluation.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "calibration"
+
+    }
+
+);
+
+// --- Entrega 2.6.1.21: MaturationModelAlert ------------------------
+
+MaturationModelConfiguration.hasMany(
+
+    MaturationModelAlert,
+
+    {
+
+        foreignKey: "modelConfigurationId",
+
+        as: "alerts"
+
+    }
+
+);
+
+MaturationModelAlert.belongsTo(
+
+    MaturationModelConfiguration,
+
+    {
+
+        foreignKey: "modelConfigurationId",
+
+        as: "modelConfiguration"
+
+    }
+
+);
+
+MaturationModelCalibration.hasMany(
+
+    MaturationModelAlert,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "alerts"
+
+    }
+
+);
+
+MaturationModelAlert.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "calibration"
+
+    }
+
+);
+
+// --- Entrega 2.6.1.23: MaturationAlertAuditLog ---------------------
+// Solo `belongsTo` en un sentido -- el log nunca se recorre "desde" un
+// modelo/alerta/calibración en esta entrega (no hay pantalla de
+// auditoría todavía), pero declarar las asociaciones deja la puerta
+// abierta a un `include` futuro sin otra migración.
+
+MaturationAlertAuditLog.belongsTo(
+
+    MaturationModelConfiguration,
+
+    {
+
+        foreignKey: "modelId",
+
+        as: "modelConfiguration"
+
+    }
+
+);
+
+MaturationAlertAuditLog.belongsTo(
+
+    MaturationModelAlert,
+
+    {
+
+        foreignKey: "alertId",
+
+        as: "alert"
+
+    }
+
+);
+
+MaturationAlertAuditLog.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "sourceCalibrationId",
+
+        as: "sourceCalibration"
+
+    }
+
+);
+
+MaturationAlertAuditLog.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "targetCalibrationId",
+
+        as: "targetCalibration"
+
+    }
+
+);
+
 module.exports = {
 
     sequelize,
@@ -208,5 +540,17 @@ module.exports = {
 
     ProductionBatch,
 
-    ProductionMeasurement
+    ProductionMeasurement,
+
+    MaturationModelConfiguration,
+
+    MaturationPrediction,
+
+    MaturationModelCalibration,
+
+    MaturationCalibrationEvaluation,
+
+    MaturationModelAlert,
+
+    MaturationAlertAuditLog
 };

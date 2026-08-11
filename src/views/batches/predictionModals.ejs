@@ -1,0 +1,95 @@
+<!-- Entrega 2.6.1.12 — trazabilidad de predicciones: detalle de una
+     predicción puntual e historial completo del lote. Solo lectura, no
+     son formularios (no extienden CrudForm). -->
+
+<div class="modal fade" id="modalPredictionDetail" tabindex="-1" aria-labelledby="modalPredictionDetailTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalPredictionDetailTitle">
+                    Detalle de la predicción
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body" id="predictionDetailBody">
+
+                <p class="text-muted mb-0">Cargando...</p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="modal fade" id="modalPredictionHistory" tabindex="-1" aria-labelledby="modalPredictionHistoryTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalPredictionHistoryTitle">
+                    Historial de predicciones
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <table class="table table-sm table-bordered mb-0">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Fecha</th>
+
+                            <th>Modelo</th>
+
+                            <th>Predicción</th>
+
+                            <th>Real</th>
+
+                            <th>Error</th>
+
+                            <th>Dirección</th>
+
+                            <th>Vigente</th>
+
+                            <th></th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="predictionHistoryBody">
+
+                    </tbody>
+
+                </table>
+
+                <p class="text-muted small mt-2 mb-0">
+                    "Real" es la fecha en que se finalizó F1 para el lote (evento existente, no una fecha nueva). "Pendiente" significa que el lote todavía no ha finalizado F1 — no es lo mismo que un error de 0 horas.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

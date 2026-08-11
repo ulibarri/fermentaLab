@@ -1146,6 +1146,433 @@ class MaturationCalculator {
 
     }
 
+    /*
+     * Entrega 2.6.1.2 — Validación histórica.
+     *
+     * Determina si/cuándo un lote realmente cruzó el valor objetivo,
+     * usando las mediciones ya registradas:
+     *
+     *   - Si alguna lectura coincide exactamente con el objetivo, se usa
+     *     esa lectura.
+     *   - Si no, se busca el primer par de lecturas consecutivas que
+     *     quedan a ambos lados del objetivo y se interpola linealmente
+     *     entre ellas para estimar el momento del cruce — sin afirmar
+     *     que hubo una medición exacta en ese instante.
+     *   - Si nunca hay un cruce, el objetivo no se alcanzó.
+     *   - Si no hay al menos 2 lecturas (o no hay objetivo configurado),
+     *     no se puede determinar nada.
+     *
+     * Regresa { reached, reachedAtHours, reachedAtTimestamp } donde
+     * `reached` es true | false | null (null = no se puede determinar).
+     */
+    static findTargetCrossing(points, targetValue) {
+
+        if (
+
+            !Array.isArray(points) || points.length < 2 ||
+            targetValue === null || targetValue === undefined
+
+        ) {
+
+            return { reached: null, reachedAtHours: null, reachedAtTimestamp: null };
+
+        }
+
+        const EPSILON = 1e-9;
+
+        for (const p of points) {
+
+            if (Math.abs(p.value - targetValue) < EPSILON) {
+
+                return {
+
+                    reached: true,
+
+                    reachedAtHours: round(p.hours, 2),
+
+                    reachedAtTimestamp: p.timestamp.toISOString()
+
+                };
+
+            }
+
+        }
+
+        for (let i = 1; i < points.length; i++) {
+
+            const prev = points[i - 1];
+
+            const curr = points[i];
+
+            const prevDiff = prev.value - targetValue;
+
+            const currDiff = curr.value - targetValue;
+
+            const crossed =
+                Math.sign(prevDiff) !== Math.sign(currDiff) &&
+                Math.sign(prevDiff) !== 0 &&
+                Math.sign(currDiff) !== 0;
+
+            if (crossed) {
+
+                const fraction =
+                    prevDiff / (prevDiff - currDiff);
+
+                const crossingHours =
+                    prev.hours + fraction * (curr.hours - prev.hours);
+
+                const crossingMillis =
+                    prev.timestamp.getTime() +
+                    fraction * (curr.timestamp.getTime() - prev.timestamp.getTime());
+
+                return {
+
+                    reached: true,
+
+                    reachedAtHours: round(crossingHours, 2),
+
+                    reachedAtTimestamp: new Date(crossingMillis).toISOString()
+
+                };
+
+            }
+
+        }
+
+        return { reached: false, reachedAtHours: null, reachedAtTimestamp: null };
+
+    }
+
+    /*
+     * Por qué la predicción lineal de un lote no se puede evaluar
+     * retrospectivamente (o null si sí se puede).
+     */
+    static _linearUnavailableReason(pointCount, targetValue, linearResult) {
+
+        if (pointCount < 2) {
+
+            return "insufficient_data";
+
+        }
+
+        if (targetValue === null || targetValue === undefined) {
+
+            return "no_target_configured";
+
+        }
+
+        if (!linearResult) {
+
+            return "insufficient_data";
+
+        }
+
+        if (linearResult.divergent) {
+
+            return "trend_diverging";
+
+        }
+
+        if (linearResult.hoursRemaining === null || linearResult.eta === null) {
+
+            return "model_not_available";
+
+        }
+
+        return null;
+
+    }
+
+    /*
+     * Por qué la predicción exponencial de un lote no se puede evaluar
+     * retrospectivamente (o null si sí se puede).
+     */
+    static _exponentialUnavailableReason(pointCount, targetValue, exponentialResult) {
+
+        if (pointCount < MIN_EXPONENTIAL_FIT_POINTS) {
+
+            return "insufficient_data";
+
+        }
+
+        if (targetValue === null || targetValue === undefined) {
+
+            return "no_target_configured";
+
+        }
+
+        if (!exponentialResult || exponentialResult.asymptote === null) {
+
+            return "model_not_fitted";
+
+        }
+
+        if (exponentialResult.reachable === false) {
+
+            return "target_not_reachable";
+
+        }
+
+        if (!exponentialResult.eta) {
+
+            return "model_not_fitted";
+
+        }
+
+        return null;
+
+    }
+
+    /*
+     * Arma el resultado de evaluación de un modelo individual: si no es
+     * evaluable, regresa un status explícito y NUNCA un error inventado
+     * (Entrega 2.6.1.2, "no debemos generar error = 0 ni ningún otro
+     * valor artificial").
+     */
+    static _evaluateModelPrediction({ predictedHoursSinceStart, predictedEta, unavailableReason, targetReached, actualHours }) {
+
+        if (unavailableReason) {
+
+            return {
+
+                status: "NOT_EVALUABLE",
+
+                reason: unavailableReason,
+
+                predictedHours: predictedHoursSinceStart,
+
+                predictedEta,
+
+                actualHours: null,
+
+                absoluteErrorHours: null
+
+            };
+
+        }
+
+        if (targetReached !== true) {
+
+            return {
+
+                status: "NOT_EVALUABLE",
+
+                reason: targetReached === false ? "target_not_reached" : "insufficient_data",
+
+                predictedHours: predictedHoursSinceStart,
+
+                predictedEta,
+
+                actualHours: null,
+
+                absoluteErrorHours: null
+
+            };
+
+        }
+
+        if (predictedHoursSinceStart === null || predictedHoursSinceStart === undefined) {
+
+            return {
+
+                status: "NOT_EVALUABLE",
+
+                reason: "model_not_available",
+
+                predictedHours: null,
+
+                predictedEta: null,
+
+                actualHours,
+
+                absoluteErrorHours: null
+
+            };
+
+        }
+
+        return {
+
+            status: "EVALUATED",
+
+            reason: null,
+
+            predictedHours: predictedHoursSinceStart,
+
+            predictedEta,
+
+            actualHours,
+
+            absoluteErrorHours: round(Math.abs(predictedHoursSinceStart - actualHours), 2)
+
+        };
+
+    }
+
+    /*
+     * Punto de entrada de la Entrega 2.6.1.2: evalúa retrospectivamente
+     * qué tan buenas habrían sido las predicciones lineal y exponencial
+     * de un lote, comparándolas contra el momento real en que se cruzó
+     * el objetivo (encontrado en las mismas mediciones).
+     *
+     * Importante — esto es un backtest, no una relectura del estado
+     * actual: si el objetivo ya se alcanzó, la predicción de cada
+     * modelo se recalcula usando SOLO las mediciones disponibles ANTES
+     * de ese cruce (llamando a analyze() con ese subconjunto), no con
+     * el conjunto completo. Usar todas las mediciones daría una
+     * "predicción" calculada con información que en su momento no
+     * existía — y además, una vez que el objetivo ya quedó atrás, la
+     * tasa más reciente (2.6.0.9) queda del lado equivocado y
+     * linearProjection() la marca correctamente como divergente, lo
+     * que impediría evaluar nada. Reutiliza analyze() íntegro (no se
+     * reimplementa el ajuste por separado), así que los números
+     * mostrados aquí son consistentes con los de 2.6.0.9/2.6.1.0 para
+     * el subconjunto de datos que efectivamente se usa.
+     *
+     * No almacena nada ni modifica mediciones ni el estado del lote:
+     * es un cálculo bajo demanda.
+     */
+    static evaluateHistorical({ measurements, metric, targetValue, phase = "F1" }) {
+
+        if (!VALID_METRICS.includes(metric)) {
+
+            throw new Error(
+
+                `Métrica de maduración no soportada: "${metric}". Valores permitidos: ${VALID_METRICS.join(", ")}.`
+
+            );
+
+        }
+
+        const phaseMeasurements =
+            (measurements || []).filter(m => m.phase === phase);
+
+        const allPoints =
+            this.extractPoints(phaseMeasurements, metric);
+
+        const crossing =
+            this.findTargetCrossing(allPoints, targetValue ?? null);
+
+        let evaluationMeasurements = phaseMeasurements;
+
+        if (crossing.reached === true) {
+
+            const beforeCrossing =
+                allPoints.filter(p => p.hours < crossing.reachedAtHours - 1e-6);
+
+            evaluationMeasurements =
+                beforeCrossing.map(p => ({
+
+                    phase,
+
+                    measurementDate: p.timestamp.toISOString(),
+
+                    [metric]: p.value
+
+                }));
+
+        }
+
+        const analysis =
+            this.analyze({
+
+                measurements: evaluationMeasurements,
+
+                metric,
+
+                targetValue,
+
+                rateThreshold: null,
+
+                targetTolerance: null,
+
+                phase
+
+            });
+
+        const evaluationPoints =
+            this.extractPoints(evaluationMeasurements, metric);
+
+        const firstTimestamp =
+            allPoints.length > 0 ? allPoints[0].timestamp : null;
+
+        const lastEvaluationPoint =
+            evaluationPoints.length > 0 ? evaluationPoints[evaluationPoints.length - 1] : null;
+
+        const actualHours =
+            crossing.reached === true ? crossing.reachedAtHours : null;
+
+        const linearPredictedHours =
+            (analysis.linear &&
+                !analysis.linear.divergent &&
+                analysis.linear.hoursRemaining !== null &&
+                lastEvaluationPoint)
+                ? round(lastEvaluationPoint.hours + analysis.linear.hoursRemaining, 2)
+                : null;
+
+        const linearEvaluation =
+            this._evaluateModelPrediction({
+
+                predictedHoursSinceStart: linearPredictedHours,
+
+                predictedEta: analysis.linear ? analysis.linear.eta : null,
+
+                unavailableReason: this._linearUnavailableReason(evaluationPoints.length, targetValue, analysis.linear),
+
+                targetReached: crossing.reached,
+
+                actualHours
+
+            });
+
+        const exponentialPredictedHours =
+            (analysis.exponential && analysis.exponential.eta && firstTimestamp)
+                ? round(
+
+                    (new Date(analysis.exponential.eta).getTime() - firstTimestamp.getTime()) / (1000 * 60 * 60),
+
+                    2
+
+                )
+                : null;
+
+        const exponentialEvaluation =
+            this._evaluateModelPrediction({
+
+                predictedHoursSinceStart: exponentialPredictedHours,
+
+                predictedEta: analysis.exponential ? analysis.exponential.eta : null,
+
+                unavailableReason: this._exponentialUnavailableReason(evaluationPoints.length, targetValue, analysis.exponential),
+
+                targetReached: crossing.reached,
+
+                actualHours
+
+            });
+
+        return {
+
+            phase,
+
+            metric,
+
+            target: targetValue ?? null,
+
+            targetReached: crossing.reached,
+
+            targetReachedAt: crossing.reachedAtTimestamp,
+
+            targetReachedHours: crossing.reachedAtHours,
+
+            linear: linearEvaluation,
+
+            exponential: exponentialEvaluation
+
+        };
+
+    }
+
 }
 
 module.exports =

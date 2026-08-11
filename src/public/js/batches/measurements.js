@@ -1,3 +1,24 @@
+/*
+ * Entrega 2.6.1.26, sección 3 -- mismos colores que
+ * CALIBRATION_STATUS_BADGES en src/public/js/maturation/calibrations.js
+ * (no se importa esa constante porque cada página carga sus propios
+ * scripts de forma independiente, sin bundler -- se duplica el mapeo,
+ * no la lógica).
+ */
+const CALIBRATION_USED_STATUS_BADGES = {
+
+    PROPOSED: "secondary",
+
+    APPROVED: "info",
+
+    ACTIVE: "success",
+
+    INACTIVE: "dark",
+
+    REJECTED: "danger"
+
+};
+
 class MeasurementsPage extends CrudPage {
 
     constructor(batchId, batchStatus) {
@@ -167,6 +188,29 @@ class MeasurementsPage extends CrudPage {
 
         this.batchStatus = batchStatus;
 
+        // Entrega 2.6.1.12 -- trazabilidad de predicciones. predictionHistory
+        // se cachea tras el primer load() para no repetir la petición al
+        // abrir el modal de historial (el detalle sigue pidiéndose siempre
+        // fresco, por registro).
+        this.predictionApi =
+            new PredictionApi(batchId);
+
+        this.predictionHistory = [];
+
+        this.predictionDetailModal =
+            bootstrap.Modal.getOrCreateInstance(
+
+                document.getElementById("modalPredictionDetail")
+
+            );
+
+        this.predictionHistoryModal =
+            bootstrap.Modal.getOrCreateInstance(
+
+                document.getElementById("modalPredictionHistory")
+
+            );
+
         this.form.form.addEventListener(
 
             "submit",
@@ -184,6 +228,18 @@ class MeasurementsPage extends CrudPage {
                 "click",
 
                 () => this.form.openNew()
+
+            );
+
+        document
+
+            .getElementById("btnPredictionHistory")
+
+            .addEventListener(
+
+                "click",
+
+                () => this.openPredictionHistory()
 
             );
 
@@ -219,6 +275,10 @@ class MeasurementsPage extends CrudPage {
             this.renderSummary();
 
             await this.renderMaturationPrediction();
+
+            await this.renderMaturationEvaluation();
+
+            await this.renderCurrentPrediction();
 
         }
 
@@ -674,6 +734,15 @@ class MeasurementsPage extends CrudPage {
 
         `;
 
+        // Entrega 2.6.1.11 — modelo ACTIVE configurado para la receta de
+        // este lote (no confundir con "recomendado": el activo es el
+        // que el usuario aprobó explícitamente para producción, ver
+        // /maturation/statistics). Solo informativo aquí.
+        const activeModelBlock =
+            prediction.activeModel
+                ? `<p class="mb-0 mt-2"><span class="badge bg-primary">Modelo activo: ${modelLabels[prediction.activeModel] || prediction.activeModel}</span></p>`
+                : `<p class="mb-0 mt-2"><span class="badge bg-secondary">Sin modelo activo configurado para esta receta</span></p>`;
+
         container.innerHTML = `
 
             <ul class="list-unstyled small mb-3">
@@ -703,6 +772,8 @@ class MeasurementsPage extends CrudPage {
             ${prediction.readyForF1Finish ? `<p class="mb-0 fw-bold">El lote puede ser evaluado para finalizar F1.</p>` : ""}
 
             ${comparisonBlock}
+
+            ${activeModelBlock}
 
         `;
 
@@ -779,6 +850,818 @@ class MeasurementsPage extends CrudPage {
             prediction
 
         });
+
+    }
+
+    async renderMaturationEvaluation() {
+
+        const container =
+            document.getElementById("maturationEvaluation");
+
+        if (!container)
+            return;
+
+        try {
+
+            const evaluation =
+                await this.api.getMaturationEvaluation();
+
+            this.renderMaturationEvaluationBlock(evaluation);
+
+        }
+
+        catch (err) {
+
+            container.innerHTML =
+                `<p class="text-danger mb-0">No fue posible obtener la evaluación histórica: ${err.message}</p>`;
+
+        }
+
+    }
+
+    renderMaturationEvaluationBlock(evaluation) {
+
+        const container =
+            document.getElementById("maturationEvaluation");
+
+        if (!container)
+            return;
+
+        if (!evaluation.configured) {
+
+            container.innerHTML =
+                `<p class="text-muted mb-0">${evaluation.message || "Este lote no tiene configurado un objetivo de maduración en su receta."}</p>`;
+
+            return;
+
+        }
+
+        // Entrega 2.6.1.2 — esto es una evaluación RETROSPECTIVA: compara
+        // lo que los modelos habrían predicho usando solo los datos
+        // disponibles antes de que el lote alcanzara el objetivo, contra
+        // el momento en que realmente lo alcanzó. No es la predicción
+        // actual del lote (esa vive en el bloque "Predicción de maduración"
+        // de arriba).
+        const intro =
+            `<p class="text-muted small mb-3">Evaluación retrospectiva: compara lo que los modelos habrían predicho con datos previos, contra lo que realmente ocurrió. No es una predicción del estado actual del lote.</p>`;
+
+        if (evaluation.targetReached === null) {
+
+            container.innerHTML =
+                intro +
+                `<p class="mb-0">No se puede determinar si el lote alcanzó el objetivo: no hay suficientes mediciones o no hay un objetivo configurado.</p>`;
+
+            return;
+
+        }
+
+        if (evaluation.targetReached === false) {
+
+            container.innerHTML =
+                intro +
+                `<p class="mb-0">El lote no alcanzó el objetivo (${this.formatValue(evaluation.target)}) con las mediciones registradas.</p>`;
+
+            return;
+
+        }
+
+        const reasonLabels = {
+
+            insufficient_data: "No hubo suficientes datos",
+
+            no_target_configured: "No hay objetivo configurado",
+
+            trend_diverging: "La tendencia se alejaba del objetivo",
+
+            model_not_available: "El modelo no pudo generar una ETA",
+
+            model_not_fitted: "El modelo no pudo ajustarse",
+
+            target_not_reachable: "El modelo determinó que el objetivo no era alcanzable",
+
+            target_not_reached: "El lote terminó antes de alcanzar el objetivo"
+
+        };
+
+        const formatModelRow = (name, model) => {
+
+            if (!model || model.status !== "EVALUATED") {
+
+                const reason =
+                    model ? (reasonLabels[model.reason] || model.reason || "No evaluable") : "No evaluable";
+
+                return `<tr><td>${name}</td><td colspan="3" class="text-muted">${reason}</td></tr>`;
+
+            }
+
+            return `
+
+                <tr>
+
+                    <td>${name}</td>
+
+                    <td>${this.formatValue(model.predictedHours)} h</td>
+
+                    <td>${this.formatValue(model.actualHours)} h</td>
+
+                    <td>${this.formatValue(model.absoluteErrorHours)} h</td>
+
+                </tr>
+
+            `;
+
+        };
+
+        const linearEvaluated =
+            evaluation.linear && evaluation.linear.status === "EVALUATED";
+
+        const exponentialEvaluated =
+            evaluation.exponential && evaluation.exponential.status === "EVALUATED";
+
+        let bestPredictionLine = "";
+
+        if (linearEvaluated && exponentialEvaluated) {
+
+            const best =
+                evaluation.linear.absoluteErrorHours <= evaluation.exponential.absoluteErrorHours
+                    ? "lineal"
+                    : "exponencial";
+
+            bestPredictionLine =
+                `<p class="mb-0"><strong>Mejor predicción:</strong> el modelo ${best} tuvo menor error.</p>`;
+
+        } else if (linearEvaluated || exponentialEvaluated) {
+
+            const which =
+                linearEvaluated ? "lineal" : "exponencial";
+
+            bestPredictionLine =
+                `<p class="mb-0"><strong>Mejor predicción:</strong> solo el modelo ${which} pudo evaluarse.</p>`;
+
+        } else {
+
+            bestPredictionLine =
+                `<p class="text-muted mb-0">Ninguno de los dos modelos pudo evaluarse retrospectivamente.</p>`;
+
+        }
+
+        container.innerHTML =
+            intro +
+            `
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Objetivo:</strong> ${this.formatValue(evaluation.target)}</li>
+
+                <li><strong>Objetivo alcanzado:</strong> Sí</li>
+
+                <li><strong>Alcanzado a las:</strong> ${this.formatValue(evaluation.targetReachedHours)} h (${this.formatDate(evaluation.targetReachedAt)})</li>
+
+            </ul>
+
+            <table class="table table-sm table-bordered mb-2">
+
+                <thead>
+
+                    <tr><th>Modelo</th><th>ETA predicho</th><th>Momento real</th><th>Error absoluto</th></tr>
+
+                </thead>
+
+                <tbody>
+
+                    ${formatModelRow("Lineal", evaluation.linear)}
+
+                    ${formatModelRow("Exponencial", evaluation.exponential)}
+
+                </tbody>
+
+            </table>
+
+            ${bestPredictionLine}
+        `;
+
+    }
+
+    /*
+     * Entrega 2.6.1.12 -- "Predicción actual (auditable)": distinta del
+     * bloque analítico "Predicción de maduración F1" de arriba (que
+     * recalcula en vivo en cada carga de página, sección 2.6.1.0-2.6.1.1).
+     * Esta tarjeta muestra la ÚLTIMA fila persistida (isCurrent=true) de
+     * MaturationPrediction -- la fotografía trazable de qué modelo/
+     * configuración/datos produjeron esa predicción exacta, generada
+     * automáticamente al registrar mediciones F1 (nunca en cada GET).
+     */
+    async renderCurrentPrediction() {
+
+        const container =
+            document.getElementById("currentPrediction");
+
+        if (!container)
+            return;
+
+        try {
+
+            // Entrega 2.6.1.13: getBatchAnalysis() es superconjunto de
+            // getHistory() -- trae las mismas predicciones (en orden
+            // cronológico ascendente) YA evaluadas contra la maduración
+            // real del lote (batch.finishedAt), así que una sola
+            // llamada alimenta tanto la tarjeta "actual" como el
+            // historial con sus columnas Real/Error/Dirección.
+            const analysis =
+                await this.predictionApi.getBatchAnalysis();
+
+            this.predictionHistory =
+                analysis.predictions || [];
+
+            this.predictionActual =
+                analysis.actual || { maturationAt: null };
+
+            this.renderCurrentPredictionBlock();
+
+        }
+
+        catch (err) {
+
+            container.innerHTML =
+                `<p class="text-danger mb-0">No fue posible obtener la predicción auditable: ${err.message}</p>`;
+
+        }
+
+    }
+
+    modelLabel(modelType) {
+
+        const labels = {
+
+            LINEAR: "Lineal",
+
+            EXPONENTIAL: "Exponencial"
+
+        };
+
+        return labels[modelType] || modelType || "—";
+
+    }
+
+    /*
+     * Entrega 2.6.1.13 -- etiqueta en español para la dirección del
+     * error (sección 7). Mantiene distinguibles PENDING/UNAVAILABLE de
+     * un resultado evaluado (criterios de aceptación: "no debemos
+     * considerar una diferencia de minutos como error" y "PENDING ≠
+     * EXACT").
+     */
+    directionLabel(direction) {
+
+        const labels = {
+
+            EARLY: "Adelantada",
+
+            LATE: "Retrasada",
+
+            EXACT: "Exacta"
+
+        };
+
+        return labels[direction] || "—";
+
+    }
+
+    /*
+     * Renderiza, para UNA predicción ya evaluada (objeto con
+     * status/errorHours/absoluteErrorHours/direction, sea que venga de
+     * getBatchAnalysis() o de detail.evaluation), las celdas/textos de
+     * "Real" y "Error" -- centraliza la distinción PENDING/UNAVAILABLE/
+     * EVALUATED para que la tarjeta, el historial y el detalle nunca
+     * la repitan de forma inconsistente.
+     */
+    evaluationRealText(evaluation, actualMaturationAt) {
+
+        if (evaluation.status === "PENDING") {
+
+            return "Pendiente (F1 no finalizado)";
+
+        }
+
+        if (evaluation.status === "UNAVAILABLE") {
+
+            return "No disponible";
+
+        }
+
+        return this.formatDate(actualMaturationAt);
+
+    }
+
+    evaluationErrorText(evaluation) {
+
+        if (evaluation.status === "PENDING") {
+
+            return "Pendiente";
+
+        }
+
+        if (evaluation.status === "UNAVAILABLE") {
+
+            return "—";
+
+        }
+
+        const sign =
+            evaluation.errorHours > 0 ? "+" : "";
+
+        return `${sign}${evaluation.errorHours} h`;
+
+    }
+
+    /*
+     * Entrega 2.6.1.16 -- "Predicción calibrada" (sección 15): nunca
+     * esconde la predicción original. `calibration` viene ya resuelto
+     * por el backend (MaturationPredictionService._serializeCalibration())
+     * -- este archivo solo lo presenta, nunca decide si una predicción
+     * "debería" estar calibrada.
+     */
+    calibrationBadgeHtml(calibration) {
+
+        if (!calibration || !calibration.applied) {
+
+            return "";
+
+        }
+
+        return `<span class="badge bg-info ms-1" title="Predicción calibrada">Calibrada</span>`;
+
+    }
+
+    calibrationDetailBlockHtml(calibration) {
+
+        if (!calibration || !calibration.applied) {
+
+            return "";
+
+        }
+
+        const sign =
+            calibration.offsetHours > 0 ? "+" : "";
+
+        return `
+
+            <p class="fw-bold mb-1">Predicción calibrada</p>
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Predicción original (sin calibrar):</strong> ${this.formatDate(calibration.rawPredictedMaturationAt)}</li>
+
+                <li><strong>Offset aplicado:</strong> ${sign}${calibration.offsetHours} h (calibración #${calibration.calibrationId})</li>
+
+                <li><strong>Predicción final:</strong> ${this.formatDate(calibration.finalPredictedMaturationAt)}</li>
+
+            </ul>
+
+            ${this.calibrationUsedBlockHtml(calibration)}
+
+        `;
+
+    }
+
+    /*
+     * Entrega 2.6.1.26, secciones 1/3/4 -- "Calibración utilizada".
+     * `calibrationId` es la referencia INMUTABLE (nunca cambia aunque
+     * esta calibración deje de ser la ACTIVE más adelante, sección 2) --
+     * este bloque, en cambio, muestra deliberadamente el estado ACTUAL
+     * de esa calibración (`calibration.record.status`), que puede
+     * legítimamente ser INACTIVE si ya fue reemplazada por una versión
+     * más nueva (sección 3, criterio de aceptación explícito: "es
+     * válido que la calibración usada aparezca como INACTIVE"). Nunca
+     * se recalcula ni se "actualiza" la predicción por esto -- solo se
+     * informa qué versión se usó y en qué estado está hoy.
+     *
+     * `calibration.record` viene del backend (MaturationPredictionService.
+     * _serializeCalibration(), 2.6.1.26) y puede ser null si el
+     * repositorio no pudo resolver la fila de calibración (nunca debería
+     * pasar en la práctica, ya que calibrationId solo se estampa cuando
+     * existía una calibración ACTIVE real -- pero se contempla de todos
+     * modos para no romper la tarjeta si algún día faltara el join).
+     */
+    calibrationUsedBlockHtml(calibration) {
+
+        const record =
+            calibration.record;
+
+        if (!record) {
+
+            return "";
+
+        }
+
+        const link =
+            `/maturation/calibrations?openVersionsId=${record.id}`;
+
+        return `
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Calibración utilizada:</strong> #${record.id} (v${this.formatValue(record.version)})</li>
+
+                <li><strong>Estado de calibración:</strong> <span class="badge bg-${CALIBRATION_USED_STATUS_BADGES[record.status] || "secondary"}">${record.status}</span></li>
+
+                <li><strong>Fecha de calibración:</strong> ${this.formatDate(record.createdAt)}</li>
+
+                <li><a href="${link}" target="_blank" rel="noopener">Ver detalle completo de esta calibración →</a></li>
+
+            </ul>
+
+        `;
+
+    }
+
+    /*
+     * Entrega 2.6.1.18, sección 18 -- indicador de que la predicción
+     * usa una calibración cuya salud ACTUAL (no la que tenía cuando se
+     * generó la predicción) es WARNING o DEGRADED. Deliberado: la
+     * predicción SIGUE usando esa calibración de todos modos -- este
+     * bloque solo informa, nunca oculta ni recalcula la ETA (criterio
+     * de aceptación explícito). Los textos son exactamente los del
+     * mockup de esa sección -- no se redactan variantes.
+     */
+    calibrationHealthWarningHtml(health) {
+
+        if (!health || (health.health !== "WARNING" && health.health !== "DEGRADED")) {
+
+            return "";
+
+        }
+
+        const message =
+            health.health === "DEGRADED"
+                ? "⚠ Esta predicción utiliza una calibración con desempeño degradado."
+                : "⚠ Esta predicción utiliza una calibración cuyo desempeño reciente está disminuyendo.";
+
+        const alertClass =
+            health.health === "DEGRADED" ? "alert-danger" : "alert-warning";
+
+        return `<div class="alert ${alertClass} small py-2 px-3 mb-3">${message}</div>`;
+
+    }
+
+    /*
+     * Fetch perezoso: solo se llama cuando `calibration.applied` es
+     * true (sección 18 -- nunca se pide la salud de una calibración
+     * que ni siquiera se está usando). Si el fetch falla, el bloque
+     * simplemente queda vacío -- nunca bloquea ni ensucia el resto de
+     * la tarjeta/detalle con un mensaje de error por un indicador que
+     * es puramente informativo.
+     */
+    async loadCalibrationHealthWarning(calibrationId, containerId) {
+
+        try {
+
+            const health =
+                await this.predictionApi.getCalibrationHealth(calibrationId);
+
+            const container =
+                document.getElementById(containerId);
+
+            if (container) {
+
+                container.innerHTML =
+                    this.calibrationHealthWarningHtml(health);
+
+            }
+
+        } catch (err) {
+
+            // Indicador puramente informativo -- ver comentario de
+            // arriba, silencioso a propósito.
+
+        }
+
+    }
+
+    renderCurrentPredictionBlock() {
+
+        const container =
+            document.getElementById("currentPrediction");
+
+        if (!container)
+            return;
+
+        const current =
+            (this.predictionHistory || []).find(p => p.isCurrent);
+
+        if (!current) {
+
+            container.innerHTML =
+                `<p class="text-muted mb-0">Todavía no se ha generado ninguna predicción auditable para este lote. Se genera automáticamente al registrar una medición F1, siempre que exista un modelo activo configurado para la receta.</p>`;
+
+            return;
+
+        }
+
+        // Entrega 2.6.1.13 -- Predicción vs. Real, directamente en la
+        // tarjeta principal (criterio de aceptación: "la interfaz
+        // muestre Predicción vs. Real" / "muestre el error").
+        const actualMaturationAt =
+            (this.predictionActual || {}).maturationAt ?? null;
+
+        const evaluation = {
+
+            status: current.status,
+
+            errorHours: current.errorHours,
+
+            absoluteErrorHours: current.absoluteErrorHours,
+
+            direction: current.direction
+
+        };
+
+        const evaluationLine =
+            evaluation.status === "EVALUATED"
+                ? `<li><strong>Dirección:</strong> ${this.directionLabel(evaluation.direction)}</li>`
+                : "";
+
+        container.innerHTML = `
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>ETA predicha:</strong> ${this.formatDate(current.predictedMaturationAt)} ${this.calibrationBadgeHtml(current.calibration)}</li>
+
+                <li><strong>Modelo:</strong> ${this.modelLabel(current.modelType)}</li>
+
+                <li><strong>Predicción generada:</strong> ${this.formatDate(current.predictedAt)}</li>
+
+                <li><strong>Duración estimada:</strong> ${this.formatValue(current.predictedDurationHours)} h</li>
+
+                <li><strong>Maduración real:</strong> ${this.evaluationRealText(evaluation, actualMaturationAt)}</li>
+
+                <li><strong>Error:</strong> ${this.evaluationErrorText(evaluation)}</li>
+
+                ${evaluationLine}
+
+            </ul>
+
+            ${this.calibrationDetailBlockHtml(current.calibration)}
+
+            <div id="currentPredictionCalibrationHealthWarning"></div>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnPredictionDetail">
+                Ver detalle
+            </button>
+
+        `;
+
+        document
+
+            .getElementById("btnPredictionDetail")
+
+            .addEventListener(
+
+                "click",
+
+                () => this.openPredictionDetail(current.id)
+
+            );
+
+        if (current.calibration && current.calibration.applied) {
+
+            this.loadCalibrationHealthWarning(current.calibration.calibrationId, "currentPredictionCalibrationHealthWarning");
+
+        }
+
+    }
+
+    openPredictionHistory() {
+
+        this.renderPredictionHistoryBody();
+
+        this.predictionHistoryModal.show();
+
+    }
+
+    renderPredictionHistoryBody() {
+
+        const tbody =
+            document.getElementById("predictionHistoryBody");
+
+        if (!tbody)
+            return;
+
+        const history =
+            this.predictionHistory || [];
+
+        if (history.length === 0) {
+
+            tbody.innerHTML =
+                `<tr><td colspan="8" class="text-muted">Sin predicciones registradas.</td></tr>`;
+
+            return;
+
+        }
+
+        const actualMaturationAt =
+            (this.predictionActual || {}).maturationAt ?? null;
+
+        tbody.innerHTML =
+            history
+
+                .map(p => {
+
+                    const evaluation = {
+
+                        status: p.status,
+
+                        errorHours: p.errorHours,
+
+                        absoluteErrorHours: p.absoluteErrorHours,
+
+                        direction: p.direction
+
+                    };
+
+                    const directionCell =
+                        evaluation.status === "EVALUATED"
+                            ? this.directionLabel(evaluation.direction)
+                            : "—";
+
+                    return `
+
+                    <tr>
+
+                        <td>${this.formatDate(p.predictedAt)}</td>
+
+                        <td>${this.modelLabel(p.modelType)}</td>
+
+                        <td>${this.formatDate(p.predictedMaturationAt)} ${this.calibrationBadgeHtml(p.calibration)}</td>
+
+                        <td>${this.evaluationRealText(evaluation, actualMaturationAt)}</td>
+
+                        <td>${this.evaluationErrorText(evaluation)}</td>
+
+                        <td>${directionCell}</td>
+
+                        <td>${p.isCurrent ? '<span class="badge bg-success">Vigente</span>' : "—"}</td>
+
+                        <td><button type="button" class="btn btn-outline-primary btn-sm" data-prediction-id="${p.id}">Ver detalle</button></td>
+
+                    </tr>
+
+                `;
+
+                })
+
+                .join("");
+
+        tbody
+
+            .querySelectorAll("button[data-prediction-id]")
+
+            .forEach(btn => {
+
+                btn.addEventListener(
+
+                    "click",
+
+                    () => this.openPredictionDetail(Number(btn.dataset.predictionId))
+
+                );
+
+            });
+
+    }
+
+    async openPredictionDetail(id) {
+
+        const body =
+            document.getElementById("predictionDetailBody");
+
+        if (!body)
+            return;
+
+        body.innerHTML =
+            `<p class="text-muted mb-0">Cargando...</p>`;
+
+        this.predictionDetailModal.show();
+
+        try {
+
+            const detail =
+                await this.predictionApi.getDetail(id);
+
+            this.renderPredictionDetailBody(detail);
+
+        }
+
+        catch (err) {
+
+            body.innerHTML =
+                `<p class="text-danger mb-0">No fue posible obtener el detalle: ${err.message}</p>`;
+
+        }
+
+    }
+
+    renderPredictionDetailBody(detail) {
+
+        const body =
+            document.getElementById("predictionDetailBody");
+
+        if (!body)
+            return;
+
+        const inputs =
+            detail.inputs || {};
+
+        // Entrega 2.6.1.13 -- getDetail() ya trae `actual`/`evaluation`
+        // calculados por el backend (aditivo sobre 2.6.1.12, sin tocar
+        // ningún campo existente de la predicción).
+        const actualMaturationAt =
+            (detail.actual || {}).maturationAt ?? null;
+
+        const evaluation =
+            detail.evaluation || { status: "PENDING" };
+
+        const evaluationDirectionLine =
+            evaluation.status === "EVALUATED"
+                ? `<li><strong>Dirección:</strong> ${this.directionLabel(evaluation.direction)}</li>`
+                : "";
+
+        const evaluationPercentageLine =
+            evaluation.status === "EVALUATED" && evaluation.errorPercentage !== null
+                ? `<li><strong>Error porcentual:</strong> ${evaluation.errorPercentage}%</li>`
+                : "";
+
+        body.innerHTML = `
+
+            <p class="fw-bold mb-1">Modelo</p>
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Tipo:</strong> ${this.modelLabel(detail.model.type)}</li>
+
+                <li><strong>Configuración:</strong> #${this.formatValue(detail.model.configurationId)}</li>
+
+                <li><strong>Activado:</strong> ${this.formatDate(detail.model.activatedAt)}</li>
+
+                <li><strong>Origen:</strong> ${detail.model.source || "—"}</li>
+
+            </ul>
+
+            <p class="fw-bold mb-1">Predicción</p>
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Generada:</strong> ${this.formatDate(detail.prediction.predictedAt)}</li>
+
+                <li><strong>ETA:</strong> ${this.formatDate(detail.prediction.predictedMaturationAt)}</li>
+
+                <li><strong>Duración estimada:</strong> ${this.formatValue(detail.prediction.durationHours)} h</li>
+
+                <li><strong>Vigente:</strong> ${detail.isCurrent ? "Sí" : "No (superada por una predicción más reciente)"}</li>
+
+            </ul>
+
+            ${this.calibrationDetailBlockHtml(detail.calibration)}
+
+            <div id="predictionDetailCalibrationHealthWarning"></div>
+
+            <p class="fw-bold mb-1">Predicción vs. Real</p>
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Maduración real:</strong> ${this.evaluationRealText(evaluation, actualMaturationAt)}</li>
+
+                <li><strong>Error:</strong> ${this.evaluationErrorText(evaluation)}</li>
+
+                ${evaluationDirectionLine}
+
+                ${evaluationPercentageLine}
+
+            </ul>
+
+            <p class="fw-bold mb-1">Datos de entrada usados</p>
+
+            <ul class="list-unstyled small mb-0">
+
+                <li><strong>pH inicial:</strong> ${this.formatValue(inputs.startingPh)}</li>
+
+                <li><strong>°Brix inicial:</strong> ${this.formatValue(inputs.startingBrix)}</li>
+
+                <li><strong>Temp. líquido inicial:</strong> ${this.formatValue(inputs.startingTemperature)}</li>
+
+                <li><strong>Temp. ambiente:</strong> ${this.formatValue(inputs.ambientTemperature)}</li>
+
+                <li><strong>Volumen objetivo:</strong> ${this.formatValue(inputs.targetVolume)}</li>
+
+                <li><strong>Versión de receta:</strong> #${this.formatValue(inputs.recipeVersionId)}</li>
+
+            </ul>
+
+        `;
+
+        if (detail.calibration && detail.calibration.applied) {
+
+            this.loadCalibrationHealthWarning(detail.calibration.calibrationId, "predictionDetailCalibrationHealthWarning");
+
+        }
 
     }
 

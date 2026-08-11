@@ -19,9 +19,21 @@ class Api {
 
             if (!response.ok) {
 
-                throw new Error(
+                const error = new Error(
                     data.message || "Error en la petición."
                 );
+
+                // Entrega 2.6.1.23 -- algunos endpoints (ej. la
+                // propuesta de recalibración duplicada) responden con un
+                // código HTTP específico (409) y datos extra en el body
+                // (ej. `existingProposal`) que el llamador necesita para
+                // reaccionar distinto de un error genérico. Aditivo:
+                // ningún código existente lee estas dos propiedades, así
+                // que esto no cambia el comportamiento de nadie más.
+                error.statusCode = response.status;
+                error.data = data;
+
+                throw error;
 
             }
 

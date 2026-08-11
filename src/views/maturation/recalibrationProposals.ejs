@@ -1,0 +1,357 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Propuestas de recalibración</h1>
+
+            <small class="text-muted">
+                Revisión humana de las propuestas generadas desde las alertas -- aprobar aquí no activa la nueva calibración
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/maturation/calibrations" class="btn btn-outline-warning me-2">
+                Calibraciones
+            </a>
+
+            <a href="/maturation/statistics" class="btn btn-outline-secondary me-2">
+                Precisión histórica
+            </a>
+
+            <a href="/maturation/dashboard" class="btn btn-outline-primary me-2">
+                Dashboard de desempeño
+            </a>
+
+            <a href="/maturation/alerts" class="btn btn-outline-danger">
+                Centro de alertas
+                <span id="navAlertsBadge" class="badge bg-danger ms-1" style="display:none"></span>
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Sección 3: filtros -->
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-2">
+
+                    <label for="rpFilterModel" class="form-label mb-1">Modelo</label>
+
+                    <select id="rpFilterModel" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <option value="LINEAR">LINEAR</option>
+
+                        <option value="EXPONENTIAL">EXPONENTIAL</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="rpFilterProduct" class="form-label mb-1">Producto</label>
+
+                    <select id="rpFilterProduct" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <% products.forEach(function (product) { %>
+
+                            <option value="<%= product.id %>"><%= product.name %></option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="rpFilterStatus" class="form-label mb-1">Estado</label>
+
+                    <select id="rpFilterStatus" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <option value="PROPOSED">PROPOSED</option>
+
+                        <option value="APPROVED">APPROVED</option>
+
+                        <option value="REJECTED">REJECTED</option>
+
+                        <!-- Entrega 2.6.1.25 -- desde esta entrega una propuesta
+                             también puede llegar a ACTIVE/INACTIVE (ver
+                             sección 13, "se conserva el historial"). -->
+                        <option value="ACTIVE">ACTIVE</option>
+
+                        <option value="INACTIVE">INACTIVE</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="rpFilterCreatedBy" class="form-label mb-1">Usuario creador</label>
+
+                    <input type="text" id="rpFilterCreatedBy" class="form-control" placeholder="Buscar por nombre...">
+
+                </div>
+
+            </div>
+
+            <div class="row gy-2 align-items-end mt-2">
+
+                <div class="col-md-2">
+
+                    <label for="rpFilterFrom" class="form-label mb-1">Desde</label>
+
+                    <input type="date" id="rpFilterFrom" class="form-control">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="rpFilterTo" class="form-label mb-1">Hasta</label>
+
+                    <input type="date" id="rpFilterTo" class="form-control">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <button type="button" class="btn btn-outline-secondary w-100" id="btnRpClearFilters">Limpiar filtros</button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="rpLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <!-- Sección 2: tabla -->
+    <table class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Fecha</th>
+
+                <th>Modelo</th>
+
+                <th>Producto</th>
+
+                <th>Receta</th>
+
+                <th>Calibración origen</th>
+
+                <th>Propuesta</th>
+
+                <th>Estado</th>
+
+                <th>Creada por</th>
+
+                <th width="90">Acciones</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="rpTableBody">
+        </tbody>
+
+    </table>
+
+</div>
+
+<!-- Sección 4/5/6: detalle de la propuesta -->
+<div class="modal fade" id="modalProposalDetail" tabindex="-1" aria-labelledby="modalProposalDetailTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalProposalDetailTitle">
+                    Propuesta de recalibración
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body" id="rpDetailBody">
+                <p class="text-muted mb-0">Cargando...</p>
+            </div>
+
+            <div class="modal-footer" id="rpDetailFooter">
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Sección 7: confirmación de aprobación -->
+<div class="modal fade" id="modalApproveProposal" tabindex="-1" aria-labelledby="modalApproveProposalTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalApproveProposalTitle">
+                    Aprobar propuesta de recalibración
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <p>Esta acción aprobará la nueva calibración para su posterior activación.</p>
+
+                <p class="fw-bold mb-0">La calibración NO será activada todavía.</p>
+
+                <p>¿Desea continuar?</p>
+
+                <div class="mt-2">
+                    <label for="rpApproveUserId" class="form-label mb-1">Aprobado por (opcional)</label>
+                    <input type="text" id="rpApproveUserId" class="form-control form-control-sm" placeholder="Tu nombre">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+                <button type="button" class="btn btn-success" id="btnConfirmApproveProposal">Aprobar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Sección 8: rechazo con motivo obligatorio -->
+<div class="modal fade" id="modalRejectProposal" tabindex="-1" aria-labelledby="modalRejectProposalTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalRejectProposalTitle">
+                    Rechazar propuesta
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <label for="rpRejectReason" class="form-label">Motivo <span class="text-danger">*</span></label>
+
+                <textarea id="rpRejectReason" class="form-control" rows="3" placeholder="Por qué se rechaza esta propuesta (obligatorio)"></textarea>
+
+                <p id="rpRejectReasonError" class="text-danger small mt-1 mb-0" style="display:none">El motivo es obligatorio.</p>
+
+                <div class="mt-2">
+                    <label for="rpRejectUserId" class="form-label mb-1">Rechazado por (opcional)</label>
+                    <input type="text" id="rpRejectUserId" class="form-control form-control-sm" placeholder="Tu nombre">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+                <button type="button" class="btn btn-danger" id="btnConfirmRejectProposal">Rechazar propuesta</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.6.1.25, sección 4: confirmación antes de activar -->
+<div class="modal fade" id="modalActivateProposal" tabindex="-1" aria-labelledby="modalActivateProposalTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalActivateProposalTitle">
+                    Activar calibración
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <p>La calibración seleccionada pasará a ser la calibración activa para este modelo/producto.</p>
+
+                <p class="fw-bold">La calibración actualmente activa dejará de estar activa.</p>
+
+                <p>¿Desea continuar?</p>
+
+                <div class="mt-2">
+                    <label for="rpActivateUserId" class="form-label mb-1">Activado por (opcional)</label>
+                    <input type="text" id="rpActivateUserId" class="form-control form-control-sm" placeholder="Tu nombre">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+                <button type="button" class="btn btn-success" id="btnConfirmActivateProposal">Activar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/js/maturation/alertBadge.js"></script>
+    <script src="/js/maturation/recalibrationProposalsApi.js"></script>
+    <script src="/js/maturation/recalibrationProposals.js"></script>

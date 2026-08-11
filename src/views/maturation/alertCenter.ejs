@@ -1,0 +1,327 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Centro de alertas</h1>
+
+            <small class="text-muted">
+                Seguimiento consolidado de la salud de todos los modelos de maduración
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/maturation/calibrations" class="btn btn-outline-warning me-2">
+                Calibraciones
+            </a>
+
+            <a href="/maturation/statistics" class="btn btn-outline-secondary me-2">
+                Precisión histórica
+            </a>
+
+            <a href="/maturation/dashboard" class="btn btn-outline-primary me-2">
+                Dashboard de desempeño
+            </a>
+
+            <a href="/maturation/recalibration-proposals" class="btn btn-outline-success">
+                Propuestas de recalibración
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Sección 1: resumen -->
+    <div class="row text-center gy-2 mb-2">
+
+        <div class="col-6 col-md-3">
+            <div class="card border-danger h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">🔴 Críticas</div>
+                    <div class="fs-4 fw-bold" id="acSummaryCritical">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card border-warning h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">🟡 Warning</div>
+                    <div class="fs-4 fw-bold" id="acSummaryWarning">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card border-info h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">🔵 Info</div>
+                    <div class="fs-4 fw-bold" id="acSummaryInfo">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card border-secondary h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">⚪ Sin datos</div>
+                    <div class="fs-4 fw-bold" id="acSummaryInsufficientData">—</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <p class="text-muted small mb-4" id="acSummaryStatusText"></p>
+
+    <!-- Sección 2: filtros -->
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-2">
+
+                    <label for="acFilterProduct" class="form-label mb-1">Producto</label>
+
+                    <select id="acFilterProduct" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <% products.forEach(function (product) { %>
+
+                            <option value="<%= product.id %>"><%= product.name %></option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="acFilterRecipeVersion" class="form-label mb-1">Receta / versión</label>
+
+                    <select id="acFilterRecipeVersion" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <% recipeVersions.forEach(function (rv) { %>
+
+                            <option value="<%= rv.id %>" data-product-id="<%= rv.recipe && rv.recipe.product ? rv.recipe.product.id : '' %>">
+
+                                <%= rv.recipe && rv.recipe.product ? (rv.recipe.product.name + " / ") : "" %><%= rv.recipe ? rv.recipe.name : ("Receta " + rv.recipeId) %> (v<%= rv.version %>)
+
+                            </option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="acFilterModel" class="form-label mb-1">Modelo</label>
+
+                    <select id="acFilterModel" class="form-select">
+
+                        <option value="">Todos</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="acFilterSeverity" class="form-label mb-1">Severidad</label>
+
+                    <select id="acFilterSeverity" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <option value="CRITICAL">CRITICAL</option>
+
+                        <option value="WARNING">WARNING</option>
+
+                        <option value="INSUFFICIENT_DATA">INSUFFICIENT_DATA</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="acFilterStatus" class="form-label mb-1">Estado</label>
+
+                    <select id="acFilterStatus" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <option value="OPEN">OPEN</option>
+
+                        <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+
+                        <option value="RESOLVED">RESOLVED</option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div class="row gy-2 align-items-end mt-2">
+
+                <div class="col-md-2">
+
+                    <label for="acFilterFrom" class="form-label mb-1">Desde</label>
+
+                    <input type="date" id="acFilterFrom" class="form-control">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="acFilterTo" class="form-label mb-1">Hasta</label>
+
+                    <input type="date" id="acFilterTo" class="form-control">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <button type="button" class="btn btn-outline-secondary w-100" id="btnClearFilters">Limpiar filtros</button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="acLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <!-- Sección 3: tabla -->
+    <table class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Fecha</th>
+
+                <th>Producto</th>
+
+                <th>Modelo</th>
+
+                <th>Severidad</th>
+
+                <th>Tipo</th>
+
+                <th>Estado</th>
+
+                <th>Calibración</th>
+
+                <th width="90">Acciones</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="acAlertsTableBody">
+        </tbody>
+
+    </table>
+
+</div>
+
+<!-- Sección 4/5/6/7: detalle de alerta -->
+<div class="modal fade" id="modalAlertDetail" tabindex="-1" aria-labelledby="modalAlertDetailTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalAlertDetailTitle">
+                    Alerta
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body" id="acAlertDetailBody">
+                <p class="text-muted mb-0">Cargando...</p>
+            </div>
+
+            <div class="modal-footer" id="acAlertDetailFooter">
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.6.1.23, secciones 1/2 -- confirmación antes de crear la
+     propuesta de recalibración, ahora también desde el Centro de
+     Alertas (misma mecánica que el modal equivalente en
+     /maturation/dashboard desde 2.6.1.21, con Estado/MAE/Bias que esta
+     entrega agrega al resumen). -->
+<div class="modal fade" id="modalAcRecalibrationProposal" tabindex="-1" aria-labelledby="modalAcRecalibrationProposalTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalAcRecalibrationProposalTitle">
+                    Crear propuesta de recalibración
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div id="acRecalibrationProposalBody">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+                <div class="mt-3">
+                    <label for="acRecalibrationCreatedBy" class="form-label mb-1">Creado por (opcional)</label>
+                    <input type="text" id="acRecalibrationCreatedBy" class="form-control form-control-sm" placeholder="Tu nombre">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+                <button type="button" class="btn btn-success" id="btnConfirmAcRecalibrationProposal">Crear propuesta</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/js/maturation/alertCenterApi.js"></script>
+    <script src="/js/maturation/alertCenter.js"></script>

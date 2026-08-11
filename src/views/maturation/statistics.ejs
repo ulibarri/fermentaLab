@@ -1,0 +1,232 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Precisión histórica</h1>
+
+            <small class="text-muted">
+
+                Qué tan bien está prediciendo FermentaLab la maduración de tus lotes
+
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/maturation/calibrations" class="btn btn-outline-warning me-2">
+
+                Calibraciones
+
+            </a>
+
+            <a href="/maturation/dashboard" class="btn btn-outline-primary me-2">
+
+                Dashboard de desempeño
+
+            </a>
+
+            <a href="/maturation/alerts" class="btn btn-outline-danger me-2">
+
+                Centro de alertas
+
+                <span id="navAlertsBadge" class="badge bg-danger ms-1" style="display:none"></span>
+
+            </a>
+
+            <a href="/maturation/recalibration-proposals" class="btn btn-outline-success me-2">
+
+                Propuestas de recalibración
+
+            </a>
+
+            <a href="/batches" class="btn btn-outline-secondary">
+
+                Volver a Lotes
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-4">
+
+                    <label for="filterProduct" class="form-label mb-1">Producto</label>
+
+                    <select id="filterProduct" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <% products.forEach(function (product) { %>
+
+                            <option value="<%= product.id %>"><%= product.name %></option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="loader" class="alert alert-info" style="display:none">
+
+        Cargando información...
+
+    </div>
+
+    <div class="card mb-4 border-success">
+
+        <div class="card-header bg-success text-white">Modelo activo</div>
+
+        <div class="card-body" id="modelActive">
+            <p class="text-muted mb-0">Cargando...</p>
+        </div>
+
+    </div>
+
+    <div class="card mb-4 border-primary">
+
+        <div class="card-header bg-primary text-white">Modelo recomendado</div>
+
+        <div class="card-body" id="modelRecommendation">
+            <p class="text-muted mb-0">Cargando...</p>
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Precisión histórica de los modelos de maduración</div>
+
+        <div class="card-body" id="maturationStatistics">
+            <p class="text-muted mb-0">Cargando...</p>
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Influencia de temperatura</div>
+
+        <div class="card-body" id="temperatureAnalysis">
+            <p class="text-muted mb-0">Cargando...</p>
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Análisis por volumen</div>
+
+        <div class="card-body" id="volumeAnalysis">
+            <p class="text-muted mb-0">Cargando...</p>
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Análisis multivariable</div>
+
+        <div class="card-body">
+
+            <div id="multivariableAnalysis">
+                <p class="text-muted mb-0">Cargando...</p>
+            </div>
+
+            <div class="row mt-3">
+
+                <div class="col-md-6">
+                    <p class="text-muted small mb-1" id="temperatureScatterMessage" style="display:none"></p>
+                    <canvas id="temperatureVsRateScatter" height="220"></canvas>
+                </div>
+
+                <div class="col-md-6">
+                    <p class="text-muted small mb-1" id="volumeScatterMessage" style="display:none"></p>
+                    <canvas id="volumeVsRateScatter" height="220"></canvas>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Comparación de modelos</div>
+
+        <div class="card-body" id="modelComparison">
+            <p class="text-muted mb-0">Cargando...</p>
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Validación temporal</div>
+
+        <div class="card-body" id="temporalValidation">
+            <p class="text-muted mb-0">Cargando...</p>
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Rendimiento real de modelos</div>
+
+        <div class="card-body">
+
+            <p class="text-muted small mb-3">Basado únicamente en lotes con maduración real registrada (Entrega 2.6.1.13) — nunca en predicciones pendientes ni en lotes sin ninguna predicción.</p>
+
+            <div id="modelAccuracyMetrics">
+                <p class="text-muted mb-0">Cargando...</p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">Calibración y sesgo</div>
+
+        <div class="card-body">
+
+            <p class="text-muted small mb-3">Análisis puramente informativo: detecta si un modelo tiende a predecir sistemáticamente antes o después de la maduración real. No aplica ninguna calibración automáticamente ni cambia el modelo activo.</p>
+
+            <div id="modelCalibrationAnalysis">
+                <p class="text-muted mb-0">Cargando...</p>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/chartjs/chart.umd.min.js"></script>
+
+    <script src="/js/maturation/alertBadge.js"></script>
+    <script src="/js/maturation/statisticsApi.js"></script>
+    <script src="/js/maturation/multivariableScatter.js"></script>
+    <script src="/js/maturation/modelComparisonChart.js"></script>
+    <script src="/js/maturation/statistics.js"></script>

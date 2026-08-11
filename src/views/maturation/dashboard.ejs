@@ -1,0 +1,431 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Dashboard de desempeño del modelo</h1>
+
+            <small class="text-muted">
+
+                Qué tan bien está prediciendo FermentaLab la maduración, y cómo ha evolucionado su desempeño
+
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/maturation/calibrations" class="btn btn-outline-warning me-2">
+                Calibraciones
+            </a>
+
+            <a href="/maturation/statistics" class="btn btn-outline-secondary me-2">
+                Precisión histórica
+            </a>
+
+            <a href="/maturation/alerts" class="btn btn-outline-danger me-2">
+                Centro de alertas
+                <span id="navAlertsBadge" class="badge bg-danger ms-1" style="display:none"></span>
+            </a>
+
+            <a href="/maturation/recalibration-proposals" class="btn btn-outline-success">
+                Propuestas de recalibración
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Entrega 2.6.1.20, sección 1/9 -- Producto -> Receta v.N -> Modelo
+         de maduración, más los filtros de periodo/calibración. -->
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-4">
+
+                    <label for="dashRecipeVersionId" class="form-label mb-1">Producto / Receta</label>
+
+                    <select id="dashRecipeVersionId" class="form-select">
+
+                        <option value="" disabled selected>Selecciona una receta</option>
+
+                        <% recipeVersions.forEach(function (rv) { %>
+
+                            <option value="<%= rv.id %>">
+
+                                <%= rv.recipe && rv.recipe.product ? (rv.recipe.product.name + " / ") : "" %><%= rv.recipe ? rv.recipe.name : ("Receta " + rv.recipeId) %> (v<%= rv.version %>)
+
+                            </option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="dashModelId" class="form-label mb-1">Modelo de maduración</label>
+
+                    <select id="dashModelId" class="form-select" disabled>
+
+                        <option value="">Selecciona una receta primero</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="dashPeriod" class="form-label mb-1">Periodo</label>
+
+                    <select id="dashPeriod" class="form-select">
+
+                        <option value="7d">Últimos 7 días</option>
+
+                        <option value="30d">Últimos 30 días</option>
+
+                        <option value="90d">Últimos 90 días</option>
+
+                        <option value="all" selected>Todo</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="dashCalibrationId" class="form-label mb-1">Calibración</label>
+
+                    <select id="dashCalibrationId" class="form-select" disabled>
+
+                        <option value="">Activa actual</option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="dashLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <div id="dashEmptyState" class="alert alert-secondary">
+        Selecciona una receta y un modelo para ver su desempeño.
+    </div>
+
+    <div id="dashContent" style="display:none">
+
+        <!-- Sección 1: resumen + sección 8: indicador global -->
+        <div class="card mb-4">
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-start mb-3">
+
+                    <div>
+                        <h4 id="dashTitle" class="mb-0">—</h4>
+                        <p class="text-muted small mb-0" id="dashSubtitle"></p>
+                    </div>
+
+                    <span id="dashIndicatorBadge" class="badge fs-6"></span>
+
+                </div>
+
+                <div class="row text-center gy-3">
+
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">Predicciones evaluadas</div>
+                        <div class="fs-4 fw-bold" id="dashSampleSize">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">MAE (calibrado)</div>
+                        <div class="fs-4 fw-bold" id="dashMae">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">RMSE (calibrado)</div>
+                        <div class="fs-4 fw-bold" id="dashRmse">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">Bias (calibrado)</div>
+                        <div class="fs-4 fw-bold" id="dashBias">—</div>
+                    </div>
+
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <div>
+                        <span class="fw-bold">Calibración: </span>
+                        <span id="dashCalibrationLabel">—</span>
+                    </div>
+
+                    <div>
+                        <span class="fw-bold">Salud: </span>
+                        <span id="dashHealthBadge">—</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Entrega 2.6.1.21, sección 13 -- Alertas y recomendaciones de
+             recalibración. La alerta vigente (si existe) y el historial
+             se calculan/deduplican server-side en cada carga (ver
+             ModelAlertService.getAlerts()) -- esta sección nunca decide
+             nada por sí sola, solo muestra lo que el backend ya
+             resolvió. -->
+        <div class="card mb-4">
+
+            <div class="card-body">
+
+                <p class="fw-bold mb-2">Alertas</p>
+
+                <div id="dashAlertActive"></div>
+
+                <p class="fw-bold mt-3 mb-2">Historial de alertas</p>
+
+                <table class="table table-sm table-striped mb-0">
+
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Severidad</th>
+                            <th>Mensaje</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="dashAlertHistoryBody">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- Sección 2: RAW vs CALIBRATED -->
+        <div class="card mb-4">
+
+            <div class="card-body">
+
+                <p class="fw-bold mb-2">Comparación RAW vs. CALIBRATED</p>
+
+                <table class="table table-sm mb-2">
+
+                    <thead>
+                        <tr><th></th><th class="text-end">RAW</th><th class="text-end">CALIBRATED</th></tr>
+                    </thead>
+
+                    <tbody id="dashRawVsCalibratedBody">
+                    </tbody>
+
+                </table>
+
+                <p class="mb-0" id="dashImprovementText"></p>
+
+            </div>
+
+        </div>
+
+        <!-- Sección 6: métricas de la calibración activa/seleccionada -->
+        <div class="card mb-4">
+
+            <div class="card-body">
+
+                <p class="fw-bold mb-2">Salud de la calibración</p>
+
+                <div id="dashHealthDetail"></div>
+
+            </div>
+
+        </div>
+
+        <!-- Sección 3: evolución temporal -->
+        <div class="card mb-4">
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+
+                    <p class="fw-bold mb-0">Evolución temporal</p>
+
+                    <select id="dashTemporalMetric" class="form-select form-select-sm" style="width:auto">
+                        <option value="mae">MAE (ventana móvil de 5 lotes)</option>
+                        <option value="rmse">RMSE (ventana móvil de 5 lotes)</option>
+                        <option value="bias">Bias (ventana móvil de 5 lotes)</option>
+                        <option value="absoluteError">Error absoluto por lote</option>
+                    </select>
+
+                </div>
+
+                <p class="text-muted small">La ventana móvil es solo para visualizar tendencia -- las métricas oficiales (arriba) siempre se calculan sobre el conjunto completo evaluado.</p>
+
+                <canvas id="dashTemporalChart" height="90"></canvas>
+
+                <p id="dashTemporalMessage" class="text-muted small mb-0" style="display:none"></p>
+
+            </div>
+
+        </div>
+
+        <div class="row">
+
+            <!-- Sección 4: predicción vs resultado real -->
+            <div class="col-md-6 mb-4">
+
+                <div class="card h-100">
+
+                    <div class="card-body">
+
+                        <p class="fw-bold mb-2">Predicción vs. resultado real</p>
+
+                        <p class="text-muted small">Duración predicha vs. duración real (horas desde la primera medición F1). Cerca de la diagonal = el modelo acierta.</p>
+
+                        <canvas id="dashScatterChart" height="220"></canvas>
+
+                        <p id="dashScatterMessage" class="text-muted small mb-0" style="display:none"></p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Sección 5: distribución del error -->
+            <div class="col-md-6 mb-4">
+
+                <div class="card h-100">
+
+                    <div class="card-body">
+
+                        <p class="fw-bold mb-2">Distribución del error</p>
+
+                        <p class="text-muted small">Error = resultado real − predicción (horas). Positivo = el modelo predijo temprano.</p>
+
+                        <canvas id="dashHistogramChart" height="220"></canvas>
+
+                        <p id="dashHistogramMessage" class="text-muted small mb-0" style="display:none"></p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Sección 7: historial de calibraciones -->
+        <div class="card mb-4">
+
+            <div class="card-body">
+
+                <p class="fw-bold mb-2">Historial de calibraciones</p>
+
+                <table class="table table-sm table-striped mb-0">
+
+                    <thead>
+                        <tr>
+                            <th>Versión</th>
+                            <th>Fecha activación</th>
+                            <th>Fecha desactivación</th>
+                            <th>Offset</th>
+                            <th>Muestras</th>
+                            <th>MAE</th>
+                            <th>RMSE</th>
+                            <th>Bias</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="dashCalibrationHistoryBody">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.6.1.21, sección 14 -- confirmación antes de crear la
+     propuesta de recalibración (nunca se crea con un solo clic sin
+     revisión: modelo/receta/calibración origen/offset actual/offset
+     sugerido/muestras, todo ya calculado por el backend dentro de la
+     propia alerta -- ver `details` en ModelAlertService). -->
+<div class="modal fade" id="modalRecalibrationProposal" tabindex="-1" aria-labelledby="modalRecalibrationProposalTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalRecalibrationProposalTitle">
+                    Nueva calibración
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div id="dashRecalibrationProposalBody">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+                <!-- Entrega 2.6.1.23, sección 2/criterio 5 -- sin sistema
+                     de autenticación en este proyecto todavía (mismo
+                     precedente que MaturationModelCalibration.createdBy
+                     desde 2.6.1.16), texto libre y opcional. -->
+                <div class="mt-3">
+                    <label for="dashRecalibrationCreatedBy" class="form-label mb-1">Creado por (opcional)</label>
+                    <input type="text" id="dashRecalibrationCreatedBy" class="form-control form-control-sm" placeholder="Tu nombre">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+                <button type="button" class="btn btn-success" id="btnConfirmRecalibrationProposal">Crear propuesta</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/chartjs/chart.umd.min.js"></script>
+
+    <script src="/js/maturation/dashboardApi.js"></script>
+    <script src="/js/maturation/alertsApi.js"></script>
+    <script src="/js/maturation/alertBadge.js"></script>
+    <script src="/js/maturation/dashboard.js"></script>

@@ -926,6 +926,391 @@ test("analyze(): la comparación no modifica currentValue, rate ni las medicione
 
 });
 
+// --- Entrega 2.6.1.2: validación histórica ---
+
+test("findTargetCrossing(): lectura exactamente igual al target la usa directamente", () => {
+
+    const points = [
+
+        point(0, 4.30, baseTime),
+
+        point(10, 4.00, baseTime),
+
+        point(20, 3.80, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.findTargetCrossing(points, 4.00);
+
+    assert.strictEqual(result.reached, true);
+
+    assert.strictEqual(result.reachedAtHours, 10);
+
+});
+
+test("findTargetCrossing(): interpola el cruce entre dos lecturas (t1 pH4.05, t2 pH3.98, target 4.00)", () => {
+
+    const points = [
+
+        point(0, 4.20, baseTime),
+
+        point(10, 4.05, baseTime),
+
+        point(20, 3.98, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.findTargetCrossing(points, 4.00);
+
+    assert.strictEqual(result.reached, true);
+
+    // fracción = (4.05-4.00)/((4.05-4.00)-(3.98-4.00)) = 0.05/0.07 ≈ 0.7143
+    // horas = 10 + 0.7143 * 10 ≈ 17.14
+    assert.ok(
+
+        Math.abs(result.reachedAtHours - 17.14) < 0.05,
+
+        `esperado ~17.14h, obtuvo ${result.reachedAtHours}`
+
+    );
+
+    assert.ok(result.reachedAtTimestamp, "se esperaba un timestamp de cruce");
+
+});
+
+test("findTargetCrossing(): el objetivo nunca se cruza -> reached=false, no null", () => {
+
+    const points = [
+
+        point(0, 4.50, baseTime),
+
+        point(10, 4.40, baseTime),
+
+        point(20, 4.35, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.findTargetCrossing(points, 4.00);
+
+    assert.strictEqual(result.reached, false);
+
+    assert.strictEqual(result.reachedAtHours, null);
+
+});
+
+test("findTargetCrossing(): con menos de 2 puntos regresa reached=null (no se puede determinar)", () => {
+
+    assert.strictEqual(
+        MaturationCalculator.findTargetCrossing([point(0, 4.30, baseTime)], 4.00).reached,
+        null
+    );
+
+    assert.strictEqual(
+        MaturationCalculator.findTargetCrossing([], 4.00).reached,
+        null
+    );
+
+});
+
+test("findTargetCrossing(): sin targetValue configurado regresa reached=null", () => {
+
+    const points = [
+
+        point(0, 4.30, baseTime),
+
+        point(10, 3.90, baseTime)
+
+    ];
+
+    assert.strictEqual(
+        MaturationCalculator.findTargetCrossing(points, null).reached,
+        null
+    );
+
+});
+
+test("evaluateHistorical(): objetivo alcanzado con tendencia limpia -> ambos modelos EVALUATED con error numérico no artificial", () => {
+
+    // Serie que decrece de forma limpia y cruza el target (4.00) entre
+    // las horas 30 y 40, con lecturas adicionales después del cruce —
+    // el backtest debe usar solo las lecturas ANTERIORES al cruce para
+    // calcular la "predicción", no el set completo.
+    const measurements = [
+
+        measurement(0, 4.50, baseTime),
+
+        measurement(10, 4.35, baseTime),
+
+        measurement(20, 4.20, baseTime),
+
+        measurement(30, 4.05, baseTime),
+
+        measurement(40, 3.95, baseTime),
+
+        measurement(50, 3.85, baseTime),
+
+        measurement(60, 3.75, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.evaluateHistorical({
+
+            measurements,
+
+            metric: "ph",
+
+            targetValue: 4.00,
+
+            phase: "F1"
+
+        });
+
+    assert.strictEqual(result.targetReached, true);
+
+    assert.strictEqual(result.linear.status, "EVALUATED");
+
+    assert.ok(
+
+        typeof result.linear.absoluteErrorHours === "number",
+
+        "se esperaba un error lineal numérico, no artificial"
+
+    );
+
+    assert.ok(
+
+        result.linear.absoluteErrorHours >= 0,
+
+        "el error absoluto no debe ser negativo"
+
+    );
+
+    // La tendencia es limpia (sin lag phase), así que el modelo lineal
+    // NO debería quedar marcado como divergente solo por truncar los
+    // datos antes del cruce — esto era precisamente el bug del primer
+    // diseño (usar el dataset completo hacía que la tasa más reciente
+    // quedara del lado equivocado del objetivo ya alcanzado).
+    assert.notStrictEqual(result.linear.reason, "trend_diverging");
+
+});
+
+test("evaluateHistorical(): con suficientes puntos previos al cruce, el modelo exponencial también es EVALUATED", () => {
+
+    // Decaimiento más lento (k=0.04) para que el cruce con el target
+    // ocurra después de al menos 4 lecturas (mínimo para el ajuste
+    // exponencial).
+    const series =
+        buildSyntheticSeries(3.90, 0.04, 4.50, [0, 10, 20, 30, 40, 50, 60, 70, 80], baseTime);
+
+    const measurements =
+        series.map(p => measurement(p.hours, p.value, baseTime));
+
+    const result =
+        MaturationCalculator.evaluateHistorical({
+
+            measurements,
+
+            metric: "ph",
+
+            targetValue: 4.00,
+
+            phase: "F1"
+
+        });
+
+    assert.strictEqual(result.targetReached, true);
+
+    assert.strictEqual(result.exponential.status, "EVALUATED");
+
+    assert.ok(typeof result.exponential.absoluteErrorHours === "number");
+
+});
+
+test("evaluateHistorical(): objetivo no alcanzado -> NOT_EVALUABLE con reason 'target_not_reached', sin error=0 artificial", () => {
+
+    const measurements = [
+
+        measurement(0, 4.50, baseTime),
+
+        measurement(10, 4.40, baseTime),
+
+        measurement(20, 4.35, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.evaluateHistorical({
+
+            measurements,
+
+            metric: "ph",
+
+            targetValue: 4.00,
+
+            phase: "F1"
+
+        });
+
+    assert.strictEqual(result.targetReached, false);
+
+    assert.strictEqual(result.linear.status, "NOT_EVALUABLE");
+
+    assert.strictEqual(result.linear.reason, "target_not_reached");
+
+    assert.strictEqual(result.linear.absoluteErrorHours, null);
+
+    assert.strictEqual(result.exponential.status, "NOT_EVALUABLE");
+
+    assert.strictEqual(result.exponential.absoluteErrorHours, null);
+
+});
+
+test("evaluateHistorical(): con menos de 2 mediciones, no se puede determinar (reached=null) y ambos modelos NOT_EVALUABLE", () => {
+
+    const measurements = [
+
+        measurement(0, 4.50, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.evaluateHistorical({
+
+            measurements,
+
+            metric: "ph",
+
+            targetValue: 4.00,
+
+            phase: "F1"
+
+        });
+
+    assert.strictEqual(result.targetReached, null);
+
+    assert.strictEqual(result.linear.status, "NOT_EVALUABLE");
+
+    assert.strictEqual(result.linear.reason, "insufficient_data");
+
+    assert.strictEqual(result.exponential.status, "NOT_EVALUABLE");
+
+});
+
+test("evaluateHistorical(): cruce ocurre con pocos puntos previos (<4) -> lineal EVALUATED pero exponencial NOT_EVALUABLE por datos insuficientes", () => {
+
+    // Solo 3 lecturas antes del cruce: alcanza para el modelo lineal
+    // (mínimo 2) pero no para el exponencial (mínimo 4).
+    const measurements = [
+
+        measurement(0, 4.50, baseTime),
+
+        measurement(10, 4.30, baseTime),
+
+        measurement(20, 4.10, baseTime),
+
+        measurement(30, 3.95, baseTime),  // cruce entre horas 20 y 30
+
+        measurement(40, 3.80, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.evaluateHistorical({
+
+            measurements,
+
+            metric: "ph",
+
+            targetValue: 4.00,
+
+            phase: "F1"
+
+        });
+
+    assert.strictEqual(result.targetReached, true);
+
+    assert.strictEqual(result.linear.status, "EVALUATED");
+
+    assert.strictEqual(result.exponential.status, "NOT_EVALUABLE");
+
+    assert.strictEqual(result.exponential.reason, "insufficient_data");
+
+});
+
+test("evaluateHistorical(): sin targetValue configurado, ambos modelos NOT_EVALUABLE con reason 'no_target_configured'", () => {
+
+    const measurements = [
+
+        measurement(0, 4.50, baseTime),
+
+        measurement(10, 4.30, baseTime),
+
+        measurement(20, 4.10, baseTime),
+
+        measurement(30, 4.00, baseTime)
+
+    ];
+
+    const result =
+        MaturationCalculator.evaluateHistorical({
+
+            measurements,
+
+            metric: "ph",
+
+            targetValue: null,
+
+            phase: "F1"
+
+        });
+
+    assert.strictEqual(result.targetReached, null);
+
+    assert.strictEqual(result.linear.reason, "no_target_configured");
+
+    assert.strictEqual(result.exponential.reason, "no_target_configured");
+
+});
+
+test("evaluateHistorical(): no muta el arreglo de mediciones original", () => {
+
+    const measurements = [
+
+        measurement(0, 4.50, baseTime),
+
+        measurement(10, 4.30, baseTime),
+
+        measurement(20, 4.10, baseTime),
+
+        measurement(30, 3.95, baseTime),
+
+        measurement(40, 3.80, baseTime)
+
+    ];
+
+    const snapshot =
+        JSON.parse(JSON.stringify(measurements));
+
+    MaturationCalculator.evaluateHistorical({
+
+        measurements,
+
+        metric: "ph",
+
+        targetValue: 4.00,
+
+        phase: "F1"
+
+    });
+
+    assert.deepStrictEqual(measurements, snapshot);
+
+});
+
 console.log(`\n${passed} pasaron, ${failed} fallaron.\n`);
 
 if (failed > 0) {
