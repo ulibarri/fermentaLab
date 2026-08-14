@@ -42,6 +42,12 @@
 
             </a>
 
+            <a href="/maturation/model-history" class="btn btn-outline-dark me-2">
+
+                Evolución del modelo
+
+            </a>
+
             <button id="btnNuevaCalibracion" class="btn btn-primary">
 
                 Nueva calibración
@@ -258,6 +264,17 @@
 
             <div class="modal-body">
 
+                <!-- Entrega 2.6.1.28 -- estado del modelo (detección
+                     automática de degradación, sección 10). Primero en
+                     el modal a propósito: es la información más
+                     accionable ("¿hay algo que revisar ahora mismo?"),
+                     antes del detalle de evaluación de abajo. -->
+                <p class="fw-bold mb-2">Estado del modelo</p>
+
+                <div id="calibrationDegradationSection" class="mb-4">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
                 <div id="calibrationEvaluationCurrent">
                     <p class="text-muted mb-0">Cargando...</p>
                 </div>
@@ -289,6 +306,16 @@
                 <p class="fw-bold mb-2">Evaluación post-activación</p>
 
                 <div id="calibrationPostActivationSection" class="mb-4">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+                <!-- Entrega 2.6.1.32 -- efectividad real de las
+                     recalibraciones (sección 10): ¿la mejora que
+                     prometía la simulación de esta calibración
+                     realmente ocurrió tras activarla? -->
+                <p class="fw-bold mb-2">Efectividad de recalibración</p>
+
+                <div id="calibrationEffectivenessSection" class="mb-4">
                     <p class="text-muted mb-0">Cargando...</p>
                 </div>
 

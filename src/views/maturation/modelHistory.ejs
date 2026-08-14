@@ -1,0 +1,160 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Evolución del modelo</h1>
+
+            <small class="text-muted">
+                Historial completo de calibraciones -- MAE, RMSE y Bias a través del tiempo, versión por versión
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/maturation/calibrations" class="btn btn-outline-warning me-2">
+                Calibraciones
+            </a>
+
+            <a href="/maturation/statistics" class="btn btn-outline-secondary me-2">
+                Precisión histórica
+            </a>
+
+            <a href="/maturation/dashboard" class="btn btn-outline-primary me-2">
+                Dashboard de desempeño
+            </a>
+
+            <a href="/maturation/alerts" class="btn btn-outline-danger me-2">
+                Centro de alertas
+                <span id="navAlertsBadge" class="badge bg-danger ms-1" style="display:none"></span>
+            </a>
+
+            <a href="/maturation/recalibration-proposals" class="btn btn-outline-success">
+                Propuestas de recalibración
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-2">
+
+                    <label for="mhFilterModel" class="form-label mb-1">Modelo</label>
+
+                    <select id="mhFilterModel" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <option value="LINEAR">LINEAR</option>
+
+                        <option value="EXPONENTIAL">EXPONENTIAL</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <label for="mhFilterRecipeVersion" class="form-label mb-1">Receta / versión</label>
+
+                    <select id="mhFilterRecipeVersion" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <% recipeVersions.forEach(function (rv) { %>
+
+                            <option value="<%= rv.id %>">
+                                <%= rv.recipe && rv.recipe.product ? (rv.recipe.product.name + " / ") : "" %><%= rv.recipe ? rv.recipe.name : ("Receta " + rv.recipeId) %> (v<%= rv.version %>)
+                            </option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="mhFilterFrom" class="form-label mb-1">Desde</label>
+
+                    <input type="date" id="mhFilterFrom" class="form-control">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="mhFilterTo" class="form-label mb-1">Hasta</label>
+
+                    <input type="date" id="mhFilterTo" class="form-control">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <button type="button" class="btn btn-outline-secondary w-100" id="btnMhClearFilters">Limpiar filtros</button>
+
+                </div>
+
+            </div>
+
+            <p class="text-muted small mt-2 mb-0">
+                Sin filtro de receta, se muestra una cadena independiente por cada modelo + receta -- nunca se mezclan calibraciones de recetas distintas.
+            </p>
+
+        </div>
+
+    </div>
+
+    <div id="mhLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <div id="mhContent">
+    </div>
+
+</div>
+
+<!-- Sección 12: detalle de una versión -->
+<div class="modal fade" id="modalVersionDetail" tabindex="-1" aria-labelledby="modalVersionDetailTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalVersionDetailTitle">
+                    Detalle de la versión
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body" id="mhDetailBody">
+                <p class="text-muted mb-0">Cargando...</p>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/chartjs/chart.umd.min.js"></script>
+
+    <script src="/js/maturation/alertBadge.js"></script>
+    <script src="/js/maturation/modelHistoryApi.js"></script>
+    <script src="/js/maturation/modelEvolutionChart.js"></script>
+    <script src="/js/maturation/modelHistory.js"></script>

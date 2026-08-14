@@ -173,6 +173,84 @@ class MaturationCalibrationsApi {
     }
 
     /*
+     * Entrega 2.6.1.28 -- detección automática de degradación
+     * (sección 14).
+     */
+
+    async getDegradationStatus(id) {
+
+        const response =
+            await Api.get(`/api/maturation/calibrations/${id}/degradation`);
+
+        return response.data;
+
+    }
+
+    async acknowledgeDegradationEvent(id) {
+
+        const response =
+            await Api.post(`/api/maturation/degradation-events/${id}/acknowledge`, {});
+
+        return response.data;
+
+    }
+
+    async resolveDegradationEvent(id) {
+
+        const response =
+            await Api.post(`/api/maturation/degradation-events/${id}/resolve`, {});
+
+        return response.data;
+
+    }
+
+    /*
+     * Entrega 2.6.1.32 -- efectividad real de las recalibraciones
+     * (secciones 1-10/14).
+     */
+    async getEffectiveness(id) {
+
+        const response =
+            await Api.get(`/api/maturation/calibrations/${id}/effectiveness`);
+
+        return response.data;
+
+    }
+
+    async evaluateEffectiveness(id) {
+
+        const response =
+            await Api.post(`/api/maturation/calibrations/${id}/effectiveness/evaluate`, {});
+
+        return response.data;
+
+    }
+
+    async getEffectivenessHistory(id) {
+
+        const response =
+            await Api.get(`/api/maturation/calibrations/${id}/effectiveness/history`);
+
+        return response.data;
+
+    }
+
+    /*
+     * Entrega 2.6.1.29, sección 12 -- ruta LITERAL pedida por el spec,
+     * bajo su propio namespace "degradation-alerts" (distinto de
+     * "degradation-events" de arriba, ver el comentario de la ruta en
+     * src/routes/api/maturation.js).
+     */
+    async generateProposalFromDegradation(degradationEventId, payload = {}) {
+
+        const response =
+            await Api.post(`/api/maturation/degradation-alerts/${degradationEventId}/proposal`, payload);
+
+        return response.data;
+
+    }
+
+    /*
      * Entrega 2.6.1.19 -- versionado y reemplazo controlado (sección
      * 13).
      */

@@ -161,6 +161,69 @@ exports.activate = async (req, res) => {
 
 };
 
+/*
+ * Entrega 2.6.1.30, sección 17 -- evaluar y priorizar una propuesta.
+ */
+// POST /api/maturation/recalibration-proposals/:id/evaluate
+exports.evaluate = async (req, res) => {
+
+    try {
+
+        const evaluation =
+            await service.evaluate(req.params.id);
+
+        res.json({
+
+            success: true,
+
+            data: evaluation
+
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
+// GET /api/maturation/recalibration-proposals/:id/evaluations
+exports.evaluationHistory = async (req, res) => {
+
+    try {
+
+        const history =
+            await service.getEvaluationHistory(req.params.id);
+
+        res.json({
+
+            success: true,
+
+            data: history
+
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
 // POST /api/maturation/recalibration-proposals/:id/reject
 exports.reject = async (req, res) => {
 

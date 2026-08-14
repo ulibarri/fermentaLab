@@ -22,6 +22,12 @@ const alertController =
 const recalibrationProposalController =
     require("../../controllers/api/RecalibrationProposalApiController");
 
+const degradationController =
+    require("../../controllers/api/CalibrationDegradationApiController");
+
+const calibrationHistoryController =
+    require("../../controllers/api/CalibrationHistoryApiController");
+
 const router =
     express.Router();
 
@@ -103,6 +109,21 @@ router.post("/calibrations", calibrationController.create);
 // alcanzaría.
 router.get("/calibrations/health", calibrationController.healthAll);
 
+// Entrega 2.6.1.31, sección 13 -- ruta LITERAL "/calibrations/history"
+// declarada ANTES que "/calibrations/:id", mismo motivo de siempre en
+// este router (ver "/calibrations/health" arriba): si fuera al revés,
+// Express interpretaría "history" como el valor de :id y esta ruta
+// nunca se alcanzaría. El spec de esta entrega nombra el endpoint como
+// "/api/calibrations/history" (sin el prefijo "/maturation") -- se
+// mantiene el namespace real de este router
+// ("/api/maturation/calibrations/...", el mismo que usan los otros 20+
+// endpoints de calibraciones desde 2.6.1.16) en vez de introducir un
+// segundo router/prefijo solo para esta ruta, mismo criterio que la
+// inconsistencia de rutas ya resuelta en 2.6.1.25 (sección 11 explícita
+// gana sobre un path literal de una sección distinta del mismo
+// documento).
+router.get("/calibrations/history", calibrationHistoryController.history);
+
 router.get("/calibrations/:id", calibrationController.detail);
 
 router.put("/calibrations/:id", calibrationController.update);
@@ -131,6 +152,37 @@ router.get("/calibrations/:id/health", calibrationController.health);
 // compite con ninguna ruta anterior.
 router.get("/calibrations/:id/post-activation-evaluation", calibrationController.postActivationEvaluation);
 
+// Entrega 2.6.1.32 -- efectividad real de las recalibraciones (secciones
+// 1-10/14). Más segmentos que "/calibrations/:id", mismo criterio de
+// siempre: nunca compite con ninguna ruta anterior.
+router.get("/calibrations/:id/effectiveness", calibrationController.effectiveness);
+
+router.post("/calibrations/:id/effectiveness/evaluate", calibrationController.evaluateEffectiveness);
+
+router.get("/calibrations/:id/effectiveness/history", calibrationController.effectivenessHistory);
+
+// Entrega 2.6.1.28 -- detección automática de degradación (sección 14).
+// La lectura vive bajo "/calibrations/:id/..." (mismo criterio que
+// health/post-activation-evaluation de arriba); las acciones
+// (acknowledge/resolve) son su propio recurso de nivel superior, mismo
+// patrón que "/alerts/:id/acknowledge" (2.6.1.21) -- un evento de
+// degradación tiene identidad propia, independiente de la calibración.
+router.get("/calibrations/:id/degradation", degradationController.status);
+
+router.post("/degradation-events/:id/acknowledge", degradationController.acknowledge);
+
+router.post("/degradation-events/:id/resolve", degradationController.resolve);
+
+// Entrega 2.6.1.29, sección 12 -- ruta LITERAL pedida por el spec:
+// "POST /api/maturation/degradation-alerts/:id/proposal", bajo un
+// namespace propio ("degradation-alerts") distinto del
+// "degradation-events" que ya usan acknowledge/resolve arriba (nombre
+// elegido por esta implementación en 2.6.1.28, que no dictaba un path
+// exacto). Se deja esta inconsistencia de nombres en vez de renombrar
+// endpoints ya probados en producción sin que el spec lo pida -- ver
+// el resumen final de esta entrega.
+router.post("/degradation-alerts/:id/proposal", degradationController.generateProposal);
+
 // Entrega 2.6.1.19 -- versionado y reemplazo controlado (sección 13).
 // Los tres tienen más segmentos que "/calibrations/:id" (o son POST,
 // no GET), así que no compiten con ninguna ruta anterior -- no hace
@@ -154,6 +206,12 @@ router.get("/recalibration-proposals/:id", recalibrationProposalController.detai
 router.post("/recalibration-proposals/:id/approve", recalibrationProposalController.approve);
 
 router.post("/recalibration-proposals/:id/reject", recalibrationProposalController.reject);
+
+// Entrega 2.6.1.30, sección 17 -- evaluación y priorización, mismo
+// namespace de propuestas de siempre.
+router.post("/recalibration-proposals/:id/evaluate", recalibrationProposalController.evaluate);
+
+router.get("/recalibration-proposals/:id/evaluations", recalibrationProposalController.evaluationHistory);
 
 // Entrega 2.6.1.25, sección 11 -- "no reutilizar el endpoint genérico"
 // de calibraciones (que sigue existiendo sin cambios en

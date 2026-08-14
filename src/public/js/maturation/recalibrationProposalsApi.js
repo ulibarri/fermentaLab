@@ -101,4 +101,25 @@ class MaturationRecalibrationProposalsApi {
 
     }
 
+    /*
+     * Entrega 2.6.1.30, sección 17 -- evaluación y priorización.
+     */
+    async evaluate(id) {
+
+        const response =
+            await Api.post(`/api/maturation/recalibration-proposals/${id}/evaluate`, {});
+
+        return response.data;
+
+    }
+
+    async evaluationHistory(id) {
+
+        const response =
+            await Api.get(`/api/maturation/recalibration-proposals/${id}/evaluations`);
+
+        return response.data;
+
+    }
+
 }

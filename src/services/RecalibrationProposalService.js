@@ -16,6 +16,20 @@ const CalibrationEffectivenessService =
 const MaturationAlertAuditLogRepository =
     require("../repositories/MaturationAlertAuditLogRepository");
 
+// Entrega 2.6.1.29, sección 8 -- una propuesta también puede venir del
+// flujo de degradación (2.6.1.28) en vez de una alerta de salud
+// (2.6.1.21/23). Ver el comentario de `getDetail()` para el porqué de
+// resolver AMBOS orígenes posibles en vez de asumir uno solo.
+const MaturationCalibrationDegradationEventRepository =
+    require("../repositories/MaturationCalibrationDegradationEventRepository");
+
+// Entrega 2.6.1.30.
+const RecalibrationProposalEvaluationRepository =
+    require("../repositories/RecalibrationProposalEvaluationRepository");
+
+const ProposalScoring =
+    require("../utils/ProposalScoring");
+
 /*
  * Gestión y aprobación de propuestas de recalibración (Entrega
  * 2.6.1.24) -- completa el flujo de revisión humana que 2.6.1.21/23
@@ -63,6 +77,14 @@ class RecalibrationProposalService {
 
         this.auditLogRepository =
             new MaturationAlertAuditLogRepository();
+
+        // Entrega 2.6.1.29.
+        this.degradationEventRepository =
+            new MaturationCalibrationDegradationEventRepository();
+
+        // Entrega 2.6.1.30.
+        this.evaluationRepository =
+            new RecalibrationProposalEvaluationRepository();
 
     }
 
@@ -123,7 +145,14 @@ class RecalibrationProposalService {
 
     }
 
-    _serializeSummary(record) {
+    /*
+     * `latestEvaluationRecord` es opcional -- `list()` lo resuelve en
+     * bloque para todas las filas del listado (evita N+1 consultas,
+     * ver `list()` abajo); cuando no se pasa (o es null), la propuesta
+     * simplemente todavía no tiene ninguna evaluación (sección 13:
+     * `evaluationStatus` empieza en "PROPOSED").
+     */
+    _serializeSummary(record, latestEvaluationRecord = null) {
 
         const { product, recipe, recipeVersion } =
             this._productAndRecipe(record.recipeVersion);
@@ -154,7 +183,20 @@ class RecalibrationProposalService {
 
             status: record.status,
 
-            createdBy: record.createdBy ?? null
+            createdBy: record.createdBy ?? null,
+
+            // Entrega 2.6.1.30, sección 13/16 -- "PROPOSED"/"EVALUATED"
+            // es un estado DERIVADO (¿existe al menos una evaluación
+            // persistida?), nunca una columna propia sobre la
+            // calibración -- deliberadamente independiente de `status`
+            // (PROPOSED/APPROVED/REJECTED/ACTIVE/INACTIVE), mismo
+            // criterio que `evaluationStatus` en
+            // `getPostActivationEvaluation()` (2.6.1.27).
+            evaluationStatus: latestEvaluationRecord ? "EVALUATED" : "PROPOSED",
+
+            score: latestEvaluationRecord ? latestEvaluationRecord.score : null,
+
+            recommendation: latestEvaluationRecord ? latestEvaluationRecord.recommendation : null
 
         };
 
@@ -170,7 +212,13 @@ class RecalibrationProposalService {
         const rows =
             await this.calibrationRepository.findRecalibrationProposals(filters);
 
-        return rows.map(record => this._serializeSummary(record));
+        // Entrega 2.6.1.30 -- una sola consulta en bloque para TODAS
+        // las filas del listado, en vez de una por fila (N+1) -- ver
+        // RecalibrationProposalEvaluationRepository.findLatestByCalibrationIds().
+        const latestByCalibrationId =
+            await this.evaluationRepository.findLatestByCalibrationIds(rows.map(record => record.id));
+
+        return rows.map(record => this._serializeSummary(record, latestByCalibrationId[record.id] || null));
 
     }
 
@@ -195,6 +243,19 @@ class RecalibrationProposalService {
         // comentario de findMostRecentByCalibration()).
         const originAlert =
             source ? await this.alertRepository.findMostRecentByCalibration(source.id) : null;
+
+        // Entrega 2.6.1.29, sección 8 -- lado "propuesta -> alerta
+        // origen" cuando esta propuesta nació del flujo de degradación
+        // (2.6.1.28) en vez del flujo de alertas de salud de arriba.
+        // Búsqueda directa por FK exacta (`proposalId` en el propio
+        // evento), no una heurística "más reciente" -- una propuesta
+        // solo puede tener, como mucho, un evento de degradación que la
+        // generó. En la práctica `originAlert` y `originDegradationEvent`
+        // son mutuamente excluyentes (una propuesta nace de UN flujo u
+        // otro, nunca de ambos), pero se resuelven de forma
+        // independiente -- ninguno depende del resultado del otro.
+        const originDegradationEvent =
+            await this.degradationEventRepository.findByProposalId(proposal.id);
 
         let originAlertDetails =
             null;
@@ -267,6 +328,18 @@ class RecalibrationProposalService {
 
         const modelId =
             await this._resolveModelConfigurationId(proposal.recipeVersionId);
+
+        // Entrega 2.6.1.30, sección 13/16 -- la evaluación VIGENTE
+        // (más reciente, si existe alguna) se muestra siempre; el
+        // historial completo vive en su propio endpoint
+        // (`getEvaluationHistory()`/GET .../evaluations), igual que
+        // `getEvaluationHistory()`/GET .../evaluations hace para
+        // MaturationCalibrationEvaluation (2.6.1.17) -- este método
+        // nunca calcula ni persiste una evaluación nueva por sí solo
+        // (sección 15: recalcular en cada lectura violaría la
+        // inmutabilidad del snapshot).
+        const latestEvaluationRecord =
+            await this.evaluationRepository.findLatestByCalibration(proposal.id);
 
         return {
 
@@ -341,7 +414,29 @@ class RecalibrationProposalService {
 
             } : null,
 
-            comparison
+            // Entrega 2.6.1.29.
+            originDegradationEvent: originDegradationEvent ? {
+
+                id: originDegradationEvent.id,
+
+                calibrationId: originDegradationEvent.calibrationId,
+
+                degradationPercentage: originDegradationEvent.degradationPercentage,
+
+                thresholdPercentage: originDegradationEvent.thresholdPercentage,
+
+                status: originDegradationEvent.status,
+
+                detectedAt: originDegradationEvent.detectedAt
+
+            } : null,
+
+            comparison,
+
+            // Entrega 2.6.1.30.
+            evaluationStatus: latestEvaluationRecord ? "EVALUATED" : "PROPOSED",
+
+            latestEvaluation: latestEvaluationRecord ? this._serializeEvaluation(latestEvaluationRecord) : null
 
         };
 
@@ -501,6 +596,226 @@ class RecalibrationProposalService {
         });
 
         return updated;
+
+    }
+
+    /*
+     * Entrega 2.6.1.30, secciones 1/13/14/15/17 -- evalúa y puntúa una
+     * propuesta ya existente, y PERSISTE el resultado como una fila
+     * nueva e inmutable (nunca sobrescribe una evaluación anterior --
+     * sección 15: "si posteriormente queremos reevaluarla con datos
+     * nuevos, eso será otra evaluación y deberá quedar registrada como
+     * tal"). Acción EXPLÍCITA, nunca automática -- a diferencia de
+     * `CalibrationDegradationService.getStatus()` (2.6.1.28, que SÍ
+     * recalcula y persiste en cada lectura), aquí un GET nunca dispara
+     * una evaluación nueva; solo esta llamada (mismo patrón que
+     * `CalibrationEffectivenessService.evaluateAndStore()`, 2.6.1.17/
+     * "POST .../evaluate").
+     *
+     * Fuente de la muestra (judgment call central de esta entrega, ver
+     * el comentario de
+     * `CalibrationEffectivenessService.simulateProposedOffsetWithPairs()`):
+     * TODA la evidencia evaluable de la calibración origen
+     * (`{windowed: false}`), no la ventana fija de 10 que 2.6.1.24/28/
+     * 29 usan para "¿hay un problema activo ahora mismo?" -- aquí la
+     * pregunta es "¿cuánta evidencia respalda esta propuesta?", y los
+     * propios rangos de confianza de muestra del spec (10-14/15-24/
+     * >=25) exigen poder ver más de 10 predicciones.
+     *
+     * Nunca exige un mínimo de muestra para poder evaluar (a diferencia
+     * de `CalibrationDegradationService.generateProposal()`, 2.6.1.29,
+     * que sí bloquea la generación por debajo de 10) -- sección 4 deja
+     * claro que una muestra pequeña sigue siendo evaluable, solo que
+     * con menos confianza (`sampleTier: "LIMITED"`/`"INSUFFICIENT"`),
+     * nunca un error.
+     */
+    async evaluate(id) {
+
+        const proposal =
+            await this._requireProposal(id);
+
+        const source =
+            proposal.parentCalibration;
+
+        if (!source) {
+
+            throw new Error("No se puede evaluar: no se encontró la calibración origen de esta propuesta.");
+
+        }
+
+        const { actual, simulated, pairs } =
+            await this.effectivenessService.simulateProposedOffsetWithPairs(source.id, proposal.offsetHours, { windowed: false });
+
+        const result =
+            ProposalScoring.evaluateProposal({
+
+                sampleSize: actual.sampleSize,
+
+                maeActualHours: actual.maeHours,
+
+                maeProposedHours: simulated.maeHours,
+
+                rmseActualHours: actual.rmseHours,
+
+                rmseProposedHours: simulated.rmseHours,
+
+                biasActualHours: actual.biasHours,
+
+                biasProposedHours: simulated.biasHours,
+
+                pairs,
+
+                currentOffsetHours: source.offsetHours !== null && source.offsetHours !== undefined ? Number(source.offsetHours) : null,
+
+                proposedOffsetHours: proposal.offsetHours !== null && proposal.offsetHours !== undefined ? Number(proposal.offsetHours) : null
+
+            });
+
+        const stored =
+            await this.evaluationRepository.create({
+
+                calibrationId: proposal.id,
+
+                sampleSize: result.sampleSize,
+
+                maeActualHours: actual.maeHours,
+
+                maeProposedHours: simulated.maeHours,
+
+                rmseActualHours: actual.rmseHours,
+
+                rmseProposedHours: simulated.rmseHours,
+
+                biasActualHours: actual.biasHours,
+
+                biasProposedHours: simulated.biasHours,
+
+                maeImprovementPercentage: result.maeImprovementPercentage,
+
+                rmseImprovementPercentage: result.rmseImprovementPercentage,
+
+                biasImprovementPercentage: result.biasImprovementPercentage,
+
+                improvedCount: result.consistency.improvedCount,
+
+                worsenedCount: result.consistency.worsenedCount,
+
+                unchangedCount: result.consistency.unchangedCount,
+
+                consistencyPercentage: result.consistency.consistencyPercentage,
+
+                adjustmentMagnitudePercentage: result.adjustmentMagnitude.changePercentage,
+
+                score: result.score,
+
+                recommendation: result.recommendation,
+
+                explanation: JSON.stringify(result.explanation),
+
+                evaluatedAt: new Date()
+
+            });
+
+        return this._serializeEvaluation(stored);
+
+    }
+
+    /*
+     * Sección 14 -- historial completo de evaluaciones de esta
+     * propuesta, más reciente primero (mismo criterio que
+     * `CalibrationEffectivenessService.getHistory()`, 2.6.1.17).
+     */
+    async getEvaluationHistory(id) {
+
+        await this._requireProposal(id);
+
+        const rows =
+            await this.evaluationRepository.findByCalibration(id);
+
+        return rows.map(record => this._serializeEvaluation(record));
+
+    }
+
+    _serializeEvaluation(record) {
+
+        let explanation =
+            { positives: [], warnings: [] };
+
+        if (record.explanation) {
+
+            try {
+
+                explanation =
+                    JSON.parse(record.explanation);
+
+            } catch (err) {
+
+                explanation =
+                    { positives: [], warnings: [] };
+
+            }
+
+        }
+
+        return {
+
+            id: record.id,
+
+            calibrationId: record.calibrationId,
+
+            sampleSize: record.sampleSize,
+
+            actual: {
+
+                maeHours: record.maeActualHours,
+
+                rmseHours: record.rmseActualHours,
+
+                biasHours: record.biasActualHours
+
+            },
+
+            proposed: {
+
+                maeHours: record.maeProposedHours,
+
+                rmseHours: record.rmseProposedHours,
+
+                biasHours: record.biasProposedHours
+
+            },
+
+            maeImprovementPercentage: record.maeImprovementPercentage,
+
+            rmseImprovementPercentage: record.rmseImprovementPercentage,
+
+            biasImprovementPercentage: record.biasImprovementPercentage,
+
+            consistency: {
+
+                improvedCount: record.improvedCount,
+
+                worsenedCount: record.worsenedCount,
+
+                unchangedCount: record.unchangedCount,
+
+                consistencyPercentage: record.consistencyPercentage
+
+            },
+
+            adjustmentMagnitudePercentage: record.adjustmentMagnitudePercentage,
+
+            score: record.score,
+
+            recommendation: record.recommendation,
+
+            explanation,
+
+            evaluatedAt: record.evaluatedAt,
+
+            createdAt: record.createdAt
+
+        };
 
     }
 

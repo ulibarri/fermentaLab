@@ -10,6 +10,12 @@ const service =
 const effectivenessService =
     new CalibrationEffectivenessService();
 
+const RecalibrationEffectivenessService =
+    require("../../services/RecalibrationEffectivenessService");
+
+const recalibrationEffectivenessService =
+    new RecalibrationEffectivenessService();
+
 const parseOptionalId = (req, key) =>
 
     req.query[key] !== undefined && req.query[key] !== ""
@@ -563,6 +569,101 @@ exports.comparison = async (req, res) => {
             success: true,
 
             data: comparison
+
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
+/*
+ * Entrega 2.6.1.32 -- efectividad real de las recalibraciones (secciones
+ * 1-10, 3 endpoints). Mismo patrón try/catch de siempre.
+ */
+
+// GET /api/maturation/calibrations/:id/effectiveness -- EN VIVO, nunca persiste
+exports.effectiveness = async (req, res) => {
+
+    try {
+
+        const evaluation =
+            await recalibrationEffectivenessService.evaluate(req.params.id);
+
+        res.json({
+
+            success: true,
+
+            data: evaluation
+
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
+// POST /api/maturation/calibrations/:id/effectiveness/evaluate -- calcula Y guarda
+exports.evaluateEffectiveness = async (req, res) => {
+
+    try {
+
+        const evaluation =
+            await recalibrationEffectivenessService.evaluateAndStore(req.params.id);
+
+        res.status(201).json({
+
+            success: true,
+
+            data: evaluation
+
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
+// GET /api/maturation/calibrations/:id/effectiveness/history -- historial persistido
+exports.effectivenessHistory = async (req, res) => {
+
+    try {
+
+        const history =
+            await recalibrationEffectivenessService.getHistory(req.params.id);
+
+        res.json({
+
+            success: true,
+
+            data: history
 
         });
 

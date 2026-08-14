@@ -540,28 +540,87 @@ class CalibrationEffectivenessService {
      */
     async simulateProposedOffset(sourceCalibrationId, proposedOffsetHours) {
 
+        const { simulated } =
+            await this.simulateProposedOffsetWithPairs(sourceCalibrationId, proposedOffsetHours, { windowed: true });
+
+        return simulated;
+
+    }
+
+    /*
+     * Entrega 2.6.1.30, secciones 1/4/8 -- generalización de
+     * `simulateProposedOffset()` (arriba, 2.6.1.24) que además:
+     *
+     *   (a) opcionalmente NO recorta a la ventana reciente de 10
+     *       (`{windowed: false}`, el nuevo default) -- necesario porque
+     *       la evaluación formal de una propuesta (sección 4: "10-14 →
+     *       confianza limitada, 15-24 → moderada, >=25 → alta") exige
+     *       tamaños de muestra que superen ampliamente 10, algo
+     *       estructuralmente imposible con la ventana fija de
+     *       `CalibrationHealth.RECENT_WINDOW_SIZE` que 2.6.1.24/28/29
+     *       usan deliberadamente para "¿hay un problema ACTIVO ahora
+     *       mismo?". Aquí la pregunta es otra -- "¿cuánta evidencia
+     *       histórica respalda esta propuesta?" -- así que se usa TODA
+     *       la evidencia evaluable disponible, no una ventana de
+     *       detección de deriva. `{windowed: true}` reproduce el
+     *       comportamiento EXACTO de antes de esta entrega, para que
+     *       `simulateProposedOffset()` (2.6.1.24/27/29, sin cambios en
+     *       su firma ni su resultado) siga funcionando idéntico.
+     *
+     *   (b) además de agregar el escenario SIMULADO, agrega el
+     *       escenario ACTUAL (con el offset YA aplicado, vía
+     *       `predictedMaturationAt`) sobre la MISMA población exacta,
+     *       más los pares { actualErrorHours, simulatedErrorHours } por
+     *       predicción individual -- necesarios para el indicador de
+     *       "consistencia" de la sección 8 (cuántas predicciones
+     *       individuales mejoran vs. empeoran), que ningún método
+     *       existente calculaba porque hasta ahora nada necesitaba el
+     *       detalle por-predicción, solo el agregado.
+     *
+     * Ambos escenarios comparten la misma población de predicciones
+     * evaluables por construcción (un único filtro, una única consulta)
+     * -- la garantía de "mismo sampleSize entre ACTUAL y PROPUESTA" que
+     * 2.6.1.24 estableció se mantiene exactamente igual aquí.
+     */
+    async simulateProposedOffsetWithPairs(sourceCalibrationId, proposedOffsetHours, { windowed = false } = {}) {
+
         const predictions =
             await this.predictionRepository.findByCalibration(sourceCalibrationId);
 
-        const evaluable =
+        let evaluable =
             predictions.filter(p => p.productionBatch && p.productionBatch.finishedAt);
 
-        const windowSize =
-            CalibrationHealth.RECENT_WINDOW_SIZE;
+        if (windowed) {
 
-        const recentStart =
-            Math.max(0, evaluable.length - windowSize);
+            const windowSize =
+                CalibrationHealth.RECENT_WINDOW_SIZE;
 
-        const recentPredictions =
-            evaluable.slice(recentStart);
+            const recentStart =
+                Math.max(0, evaluable.length - windowSize);
+
+            evaluable =
+                evaluable.slice(recentStart);
+
+        }
 
         const offsetHoursMs =
             Number(proposedOffsetHours) * 3600000;
 
-        const simulatedEvaluations =
-            recentPredictions
+        const pairs =
+            evaluable
 
                 .map(p => {
+
+                    const actualEvaluation =
+                        PredictionEvaluation.evaluatePrediction({
+
+                            predictedMaturationAt: p.predictedMaturationAt,
+
+                            predictedDurationHours: null,
+
+                            actualMaturationAt: p.productionBatch.finishedAt
+
+                        });
 
                     const rawBaseMs =
                         new Date(p.rawPredictedMaturationAt).getTime();
@@ -569,23 +628,49 @@ class CalibrationEffectivenessService {
                     const simulatedPredictedMaturationAt =
                         new Date(rawBaseMs + offsetHoursMs);
 
-                    return PredictionEvaluation.evaluatePrediction({
+                    const simulatedEvaluation =
+                        PredictionEvaluation.evaluatePrediction({
 
-                        predictedMaturationAt: simulatedPredictedMaturationAt,
+                            predictedMaturationAt: simulatedPredictedMaturationAt,
 
-                        predictedDurationHours: null,
+                            predictedDurationHours: null,
 
-                        actualMaturationAt: p.productionBatch.finishedAt
+                            actualMaturationAt: p.productionBatch.finishedAt
 
-                    });
+                        });
+
+                    return { actual: actualEvaluation, simulated: simulatedEvaluation };
 
                 })
 
-                .filter(evaluation => evaluation.status === "EVALUATED")
+                // Misma disciplina que `_collectComparisons()` (2.6.1.17):
+                // si cualquiera de los dos
+                // escenarios no fuera evaluable para una predicción
+                // dada, se excluye de AMBOS, nunca se comparan tamaños
+                // de muestra distintos entre ACTUAL y PROPUESTA.
+                .filter(pair => pair.actual.status === "EVALUATED" && pair.simulated.status === "EVALUATED");
 
-                .map(evaluation => ({ errorHours: evaluation.errorHours, direction: evaluation.direction }));
+        const actualEvaluations =
+            pairs.map(pair => ({ errorHours: pair.actual.errorHours, direction: pair.actual.direction }));
 
-        return ModelAccuracyMetrics.summarizeModelAccuracy("SIMULATED", simulatedEvaluations);
+        const simulatedEvaluations =
+            pairs.map(pair => ({ errorHours: pair.simulated.errorHours, direction: pair.simulated.direction }));
+
+        return {
+
+            actual: ModelAccuracyMetrics.summarizeModelAccuracy("ACTUAL", actualEvaluations),
+
+            simulated: ModelAccuracyMetrics.summarizeModelAccuracy("SIMULATED", simulatedEvaluations),
+
+            pairs: pairs.map(pair => ({
+
+                actualErrorHours: pair.actual.errorHours,
+
+                simulatedErrorHours: pair.simulated.errorHours
+
+            }))
+
+        };
 
     }
 

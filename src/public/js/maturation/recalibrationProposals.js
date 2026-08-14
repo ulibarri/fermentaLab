@@ -24,6 +24,18 @@ const PROPOSAL_STATUS_BADGES = {
 
 };
 
+// Entrega 2.6.1.30, sección 3/16 -- LOW/MEDIUM/HIGH, con el mismo
+// semáforo 🔴/🟡/🟢 del mockup de la sección 16.
+const RECOMMENDATION_BADGES = {
+
+    LOW: { badge: "danger", emoji: "🔴", label: "BAJA" },
+
+    MEDIUM: { badge: "warning", emoji: "🟡", label: "MEDIA" },
+
+    HIGH: { badge: "success", emoji: "🟢", label: "ALTA" }
+
+};
+
 class MaturationRecalibrationProposalsPage {
 
     constructor() {
@@ -217,6 +229,36 @@ class MaturationRecalibrationProposalsPage {
 
     }
 
+    formatSignedPercentage(value) {
+
+        if (value === null || value === undefined) {
+
+            return "—";
+
+        }
+
+        const sign =
+            value > 0 ? "+" : "";
+
+        return `${sign}${value}%`;
+
+    }
+
+    recommendationBadgeHtml(recommendation) {
+
+        if (!recommendation) {
+
+            return "—";
+
+        }
+
+        const info =
+            RECOMMENDATION_BADGES[recommendation] || { badge: "secondary", emoji: "", label: recommendation };
+
+        return `<span class="badge bg-${info.badge}">${info.emoji} ${info.label}</span>`;
+
+    }
+
     currentFilters() {
 
         return {
@@ -295,7 +337,7 @@ class MaturationRecalibrationProposalsPage {
         if (!proposals || proposals.length === 0) {
 
             this.tableBody.innerHTML =
-                `<tr><td colspan="9" class="text-muted">No hay propuestas que coincidan con los filtros seleccionados.</td></tr>`;
+                `<tr><td colspan="11" class="text-muted">No hay propuestas que coincidan con los filtros seleccionados.</td></tr>`;
 
             return;
 
@@ -311,6 +353,8 @@ class MaturationRecalibrationProposalsPage {
                     <td>${p.sourceCalibration ? "v" + p.sourceCalibration.version : "—"}</td>
                     <td>v${p.proposedVersion}</td>
                     <td><span class="badge bg-${PROPOSAL_STATUS_BADGES[p.status] || "secondary"}">${p.status}</span></td>
+                    <td>${p.score !== null && p.score !== undefined ? p.score + "/100" : "—"}</td>
+                    <td>${this.recommendationBadgeHtml(p.recommendation)}</td>
                     <td>${p.createdBy || "—"}</td>
                     <td><button type="button" class="btn btn-sm btn-outline-primary" data-proposal-id="${p.id}">Ver</button></td>
                 </tr>
@@ -372,11 +416,25 @@ class MaturationRecalibrationProposalsPage {
         const comparisonBlock =
             this.buildComparisonHtml(proposal.comparison);
 
+        const evaluationBlock =
+            this.buildEvaluationSectionHtml(proposal);
+
+        // Entrega 2.6.1.29, sección 8 -- una propuesta viene de UNO de
+        // dos flujos posibles, nunca de ambos a la vez (ver el
+        // comentario de RecalibrationProposalService.getDetail()):
+        // alerta de SALUD (2.6.1.21/23, `originAlert`) o alerta de
+        // DEGRADACIÓN (2.6.1.28/29, `originDegradationEvent`). Solo se
+        // muestra el mensaje "no se encontró" cuando NINGUNO de los dos
+        // está presente.
         const alertBlock =
             proposal.originAlert ? `
                 <p class="fw-bold mb-1 mt-3">Alerta origen</p>
                 <p class="mb-1">Alerta #${proposal.originAlert.id} -- <span class="badge bg-${proposal.originAlert.severity === "CRITICAL" ? "danger" : "warning"}">${proposal.originAlert.severity}</span> (${proposal.originAlert.status})</p>
                 <a href="/maturation/alerts?openAlertId=${proposal.originAlert.id}" class="btn btn-sm btn-outline-secondary">Ver alerta origen</a>
+            ` : proposal.originDegradationEvent ? `
+                <p class="fw-bold mb-1 mt-3">Alerta origen</p>
+                <p class="mb-1">Alerta de degradación #${proposal.originDegradationEvent.id} -- calibración #${proposal.originDegradationEvent.calibrationId}, incremento de MAE ${proposal.originDegradationEvent.degradationPercentage > 0 ? "+" : ""}${proposal.originDegradationEvent.degradationPercentage}% sobre un umbral de ${proposal.originDegradationEvent.thresholdPercentage}% (${proposal.originDegradationEvent.status})</p>
+                <a href="/maturation/calibrations?openEvaluationId=${proposal.originDegradationEvent.calibrationId}" class="btn btn-sm btn-outline-secondary">Ver alerta origen</a>
             ` : `<p class="text-muted small mt-3 mb-0">No se encontró la alerta que originó esta propuesta.</p>`;
 
         const justificationBlock =
@@ -409,6 +467,7 @@ class MaturationRecalibrationProposalsPage {
                 ${proposal.activatedAt ? `<dt class="col-4">Activada por</dt><dd class="col-8">${proposal.activatedBy || "—"} (${this.formatDate(proposal.activatedAt)})</dd>` : ""}
             </dl>
             ${proposal.reason ? `<p class="fw-bold mb-1">Motivo de la propuesta</p><p>${proposal.reason}</p>` : ""}
+            ${evaluationBlock}
             ${comparisonBlock}
             ${justificationBlock}
             ${alertBlock}
@@ -477,6 +536,130 @@ class MaturationRecalibrationProposalsPage {
         if (activateButton) {
 
             activateButton.addEventListener("click", () => this.openActivateModal());
+
+        }
+
+        const evaluateButton =
+            document.getElementById("btnEvaluateProposal");
+
+        if (evaluateButton) {
+
+            evaluateButton.addEventListener("click", () => this.handleEvaluateProposal());
+
+        }
+
+    }
+
+    /*
+     * Entrega 2.6.1.30, secciones 13/16/17 -- "Evaluación de la
+     * propuesta": estado (PROPOSED/EVALUATED, derivado -- nunca el
+     * `status` del ciclo de vida APPROVED/REJECTED/ACTIVE, sección 13),
+     * score/recomendación, ACTUAL vs. PROPUESTA (MAE/RMSE/Bias +
+     * mejora), consistencia, y el checklist ✓/⚠ explicando el porqué
+     * (secciones 11/12 -- "la recomendación no debe ser una caja
+     * negra"). Deliberadamente SEPARADA de la sección "Comparación de
+     * calibraciones" de 2.6.1.24 (que sigue debajo, sin cambios): esa
+     * comparación usa la ventana reciente de 10 predicciones
+     * (`getHealth().recent`, pensada para "¿hay un problema activo
+     * ahora mismo?"); esta usa TODA la evidencia evaluable de la
+     * calibración origen (pensada para "¿cuánta evidencia respalda
+     * esta propuesta?", sección 4) -- mezclar ambas bajo un solo
+     * cuadro habría hecho parecer que son la misma medición cuando no
+     * lo son.
+     */
+    buildEvaluationSectionHtml(proposal) {
+
+        const evaluation =
+            proposal.latestEvaluation;
+
+        const buttonHtml =
+            `<button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnEvaluateProposal">${evaluation ? "Reevaluar" : "Evaluar propuesta"}</button>`;
+
+        if (!evaluation) {
+
+            return `
+                <p class="fw-bold mb-1 mt-3">Evaluación de la propuesta</p>
+                <p class="text-muted small mb-1">Estado: <span class="badge bg-secondary">PROPOSED</span> -- todavía no evaluada.</p>
+                ${buttonHtml}
+            `;
+
+        }
+
+        const positivesHtml =
+            (evaluation.explanation.positives || []).map(text => `<li class="text-success">✓ ${text}</li>`).join("");
+
+        const warningsHtml =
+            (evaluation.explanation.warnings || []).map(text => `<li class="text-warning">⚠ ${text}</li>`).join("");
+
+        const totalPairs =
+            evaluation.consistency.improvedCount + evaluation.consistency.worsenedCount + evaluation.consistency.unchangedCount;
+
+        return `
+            <p class="fw-bold mb-1 mt-3">Evaluación de la propuesta</p>
+            <p class="mb-2">Estado: <span class="badge bg-success">EVALUATED</span> <span class="text-muted small">(${this.formatDate(evaluation.evaluatedAt)})</span></p>
+            <div class="row mb-3">
+                <div class="col-6">
+                    <p class="text-muted small mb-0">Score</p>
+                    <p class="fs-4 fw-bold mb-0">${evaluation.score} / 100</p>
+                </div>
+                <div class="col-6">
+                    <p class="text-muted small mb-0">Recomendación</p>
+                    <p class="fs-5 fw-bold mb-0">${this.recommendationBadgeHtml(evaluation.recommendation)}</p>
+                </div>
+            </div>
+            <table class="table table-sm mb-2">
+                <thead>
+                    <tr><th></th><th class="text-end">ACTUAL</th><th class="text-end">PROPUESTA</th><th class="text-end">Mejora</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>MAE</td><td class="text-end">${this.formatHours(evaluation.actual.maeHours)}</td><td class="text-end">${this.formatHours(evaluation.proposed.maeHours)}</td><td class="text-end">${this.formatSignedPercentage(evaluation.maeImprovementPercentage)}</td></tr>
+                    <tr><td>RMSE</td><td class="text-end">${this.formatHours(evaluation.actual.rmseHours)}</td><td class="text-end">${this.formatHours(evaluation.proposed.rmseHours)}</td><td class="text-end">${this.formatSignedPercentage(evaluation.rmseImprovementPercentage)}</td></tr>
+                    <tr><td>Bias</td><td class="text-end">${this.formatSignedHours(evaluation.actual.biasHours)}</td><td class="text-end">${this.formatSignedHours(evaluation.proposed.biasHours)}</td><td class="text-end">${this.formatSignedPercentage(evaluation.biasImprovementPercentage)}</td></tr>
+                </tbody>
+            </table>
+            <p class="small mb-2">Consistencia: ${evaluation.consistency.improvedCount} de ${totalPairs} predicciones mejoran -- Muestras: ${evaluation.sampleSize}</p>
+            <ul class="list-unstyled small mb-2">
+                ${positivesHtml}
+                ${warningsHtml}
+            </ul>
+            ${buttonHtml}
+        `;
+
+    }
+
+    /*
+     * Sección 17 -- "evaluar no implica aprobar ni activar": esta
+     * acción solo llama a .../evaluate y refresca el detalle/listado,
+     * nunca toca status/APPROVED/ACTIVE.
+     */
+    async handleEvaluateProposal() {
+
+        if (!this.currentProposal) {
+
+            return;
+
+        }
+
+        const id =
+            this.currentProposal.id;
+
+        try {
+
+            await this.api.evaluate(id);
+
+            if (typeof UI.success === "function") {
+
+                UI.success("Propuesta evaluada.");
+
+            }
+
+            await this.openDetail(id);
+
+            await this.load();
+
+        } catch (err) {
+
+            UI.error(err.message);
 
         }
 

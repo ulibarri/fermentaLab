@@ -165,6 +165,23 @@ const POST_ACTIVATION_RESULT_LABELS = {
 
 };
 
+// Entrega 2.6.1.32, sección 3 -- semáforo de efectividad de la
+// recalibración. Bootstrap no trae un "bg-orange" de fábrica -- 🟠
+// (BAJA EFECTIVIDAD) reutiliza el mismo badge "secondary" que
+// "muestra insuficiente", el emoji dentro del texto es lo que sigue
+// distinguiendo visualmente los cuatro niveles.
+const EFFECTIVENESS_TIER_BADGES = {
+
+    HIGH: "success",
+
+    MODERATE: "warning",
+
+    LOW: "secondary",
+
+    INEFFECTIVE: "danger"
+
+};
+
 class MaturationCalibrationsPage {
 
     constructor() {
@@ -245,6 +262,33 @@ class MaturationCalibrationsPage {
         // Entrega 2.6.1.27 -- evaluación post-activación (secciones 1-9).
         this.postActivationSectionContainer =
             document.getElementById("calibrationPostActivationSection");
+
+        // Entrega 2.6.1.28 -- estado del modelo / degradación (sección
+        // 10). Contenido dinámico con botones ("Reconocer"/"Ver
+        // análisis") -- se usa delegación de eventos sobre el
+        // contenedor, mismo patrón que healthAlertsContainer arriba.
+        this.degradationSectionContainer =
+            document.getElementById("calibrationDegradationSection");
+
+        if (this.degradationSectionContainer) {
+
+            this.degradationSectionContainer.addEventListener("click", e => this.handleDegradationSectionClick(e));
+
+        }
+
+        // Entrega 2.6.1.32 -- efectividad real de las recalibraciones
+        // (sección 10). Quinto bloque independiente del modal de
+        // evaluación, mismo criterio de siempre: contenido dinámico con
+        // botón "Evaluar"/"Reevaluar" -> delegación de eventos sobre el
+        // contenedor.
+        this.effectivenessSectionContainer =
+            document.getElementById("calibrationEffectivenessSection");
+
+        if (this.effectivenessSectionContainer) {
+
+            this.effectivenessSectionContainer.addEventListener("click", e => this.handleEffectivenessSectionClick(e));
+
+        }
 
         if (this.healthAlertsContainer) {
 
@@ -1040,6 +1084,18 @@ class MaturationCalibrationsPage {
 
         }
 
+        if (this.degradationSectionContainer) {
+
+            this.degradationSectionContainer.innerHTML = `<p class="text-muted mb-0">Cargando...</p>`;
+
+        }
+
+        if (this.effectivenessSectionContainer) {
+
+            this.effectivenessSectionContainer.innerHTML = `<p class="text-muted mb-0">Cargando...</p>`;
+
+        }
+
         this.evaluationModal.show();
 
         try {
@@ -1125,6 +1181,62 @@ class MaturationCalibrationsPage {
 
                 this.postActivationSectionContainer.innerHTML =
                     `<p class="text-danger mb-0">No fue posible obtener la evaluación post-activación: ${err.message}</p>`;
+
+            }
+
+        }
+
+        // Entrega 2.6.1.28 -- estado del modelo / degradación, cuarto
+        // bloque independiente (mismo criterio que los tres de arriba):
+        // su falla nunca debe impedir ver ninguno de los otros tres, ni
+        // viceversa.
+        try {
+
+            const degradation =
+                await this.api.getDegradationStatus(id);
+
+            if (this.degradationSectionContainer) {
+
+                this.degradationSectionContainer.innerHTML =
+                    this.buildDegradationSectionHtml(degradation);
+
+            }
+
+        } catch (err) {
+
+            if (this.degradationSectionContainer) {
+
+                this.degradationSectionContainer.innerHTML =
+                    `<p class="text-danger mb-0">No fue posible obtener el estado de degradación: ${err.message}</p>`;
+
+            }
+
+        }
+
+        // Entrega 2.6.1.32 -- efectividad real de la recalibración,
+        // quinto bloque independiente (mismo criterio que los cuatro de
+        // arriba): su falla nunca debe impedir ver ninguno de los
+        // otros, ni viceversa. EN VIVO -- siempre refleja la evidencia
+        // post-activación más fresca (ver el comentario de
+        // RecalibrationEffectivenessService).
+        try {
+
+            const effectiveness =
+                await this.api.getEffectiveness(id);
+
+            if (this.effectivenessSectionContainer) {
+
+                this.effectivenessSectionContainer.innerHTML =
+                    this.buildEffectivenessSectionHtml(effectiveness);
+
+            }
+
+        } catch (err) {
+
+            if (this.effectivenessSectionContainer) {
+
+                this.effectivenessSectionContainer.innerHTML =
+                    `<p class="text-danger mb-0">No fue posible obtener la efectividad de recalibración: ${err.message}</p>`;
 
             }
 
@@ -1364,6 +1476,378 @@ class MaturationCalibrationsPage {
                 ${metricLines ? `<ul class="list-unstyled small mb-0">${metricLines}</ul>` : ""}
             </div>
         `;
+
+    }
+
+    /*
+     * Entrega 2.6.1.28, sección 10 -- tarjeta "Estado del modelo".
+     * `status` es la respuesta EN VIVO de GET .../degradation -- ese
+     * mismo GET ya corrió la detección/deduplicación/recuperación en
+     * el backend (CalibrationDegradationService.getStatus()), este
+     * método solo la presenta.
+     */
+    buildDegradationSectionHtml(status) {
+
+        if (!status.applicable) {
+
+            const reasonText =
+                status.reason === "NOT_ACTIVE"
+                    ? "Esta calibración ya no está ACTIVE -- la detección automática de degradación solo corre sobre la calibración activa de cada modelo/receta."
+                    : "Esta calibración no tiene una calibración anterior con la que compararse (es la primera versión de su cadena) -- todavía no existe un baseline contra el cual detectar degradación.";
+
+            return `
+                <div class="border rounded p-3">
+                    <p class="mb-1"><span class="text-success">●</span> Normal</p>
+                    <p class="text-muted small mb-0">${reasonText}</p>
+                </div>
+            `;
+
+        }
+
+        if (status.degradationStatus !== "DEGRADED" || !status.current) {
+
+            const sampleNote =
+                status.classification && !status.classification.sufficientSample
+                    ? `<p class="text-muted small mb-0">Todavía no hay ${10} predicciones evaluables recientes -- la detección automática no se ejecuta con una muestra tan pequeña (sección 5).</p>`
+                    : "";
+
+            return `
+                <div class="border rounded p-3">
+                    <p class="mb-1"><span class="text-success">●</span> Normal</p>
+                    ${sampleNote}
+                </div>
+            `;
+
+        }
+
+        const event =
+            status.current;
+
+        const sign =
+            event.degradationPercentage > 0 ? "+" : "";
+
+        const acknowledgeButton =
+            event.status === "DETECTED"
+                ? `<button type="button" class="btn btn-sm btn-outline-warning" data-action="acknowledge-degradation" data-id="${event.id}">Reconocer</button>`
+                : `<span class="badge bg-secondary">Reconocida</span>`;
+
+        return `
+            <div class="border border-danger rounded p-3">
+                <p class="fw-bold text-danger mb-2">⚠ Degradación detectada</p>
+                <ul class="list-unstyled small mb-2">
+                    <li><strong>MAE baseline:</strong> ${this.formatValue(event.baselineMaeHours)} h</li>
+                    <li><strong>MAE actual:</strong> ${this.formatValue(event.currentMaeHours)} h</li>
+                    <li><strong>Incremento:</strong> ${sign}${this.formatValue(event.degradationPercentage)}%</li>
+                    <li><strong>Umbral:</strong> ${event.thresholdPercentage}%</li>
+                    <li><strong>Muestras evaluadas:</strong> ${event.sampleSize}</li>
+                    <li><strong>Detectada:</strong> ${this.formatDate(event.detectedAt)}</li>
+                </ul>
+                <div class="mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-dark me-2" data-action="view-degradation-analysis">Ver análisis</button>
+                    ${acknowledgeButton}
+                </div>
+                ${this.buildDegradationProposalActionsHtml(event)}
+            </div>
+        `;
+
+    }
+
+    /*
+     * Entrega 2.6.1.29, secciones 9/10 -- botón "Generar propuesta"
+     * (solo si el evento todavía no tiene ninguna propuesta ACTIVA
+     * asociada) y/o "Ver propuesta" (si ya tiene una, apuntando siempre
+     * a la MÁS RECIENTE -- `event.proposalId`, ver
+     * CalibrationDegradationService._serializeEventWithProposal()).
+     * Ambos pueden mostrarse a la vez únicamente cuando la propuesta
+     * existente fue RECHAZADA (sección 9: "posteriormente podrá
+     * generarse otra propuesta solamente mediante una nueva solicitud
+     * explícita") -- en cualquier otro estado (PROPOSED/APPROVED/
+     * ACTIVE/INACTIVE) solo se ofrece "Ver propuesta", nunca la opción
+     * de generar una segunda mientras la primera sigue vigente (el
+     * backend la rechazaría de todos modos, pero no tiene sentido
+     * ofrecer un botón que se sabe de antemano que va a fallar).
+     */
+    buildDegradationProposalActionsHtml(event) {
+
+        const viewButton =
+            event.proposalId
+                ? `<a href="/maturation/recalibration-proposals?openId=${event.proposalId}" class="btn btn-sm btn-outline-success me-2" data-action="view-degradation-proposal">Ver propuesta${event.proposalStatus === "REJECTED" ? " (rechazada)" : ""}</a>`
+                : "";
+
+        const generateButton =
+            (!event.proposalId || event.proposalStatus === "REJECTED")
+                ? `<button type="button" class="btn btn-sm btn-primary" data-action="generate-proposal" data-id="${event.id}">${event.proposalId ? "Generar nueva propuesta" : "Generar propuesta"}</button>`
+                : "";
+
+        if (!viewButton && !generateButton) {
+
+            return "";
+
+        }
+
+        return `<div>${viewButton}${generateButton}</div>`;
+
+    }
+
+    /*
+     * "Ver análisis" no abre una vista nueva -- el análisis detallado
+     * (MAE/RMSE/Bias/periodo) ya está en la sección "Evaluación
+     * post-activación" (2.6.1.27) del mismo modal, justo debajo; este
+     * botón simplemente hace scroll hasta ahí en vez de duplicar esa
+     * información en una segunda tarjeta.
+     */
+    async handleDegradationSectionClick(e) {
+
+        const button =
+            e.target.closest("button[data-action]");
+
+        if (!button) {
+
+            return;
+
+        }
+
+        const action =
+            button.dataset.action;
+
+        if (action === "view-degradation-analysis") {
+
+            if (this.postActivationSectionContainer) {
+
+                this.postActivationSectionContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+
+            }
+
+            return;
+
+        }
+
+        if (action === "acknowledge-degradation") {
+
+            const eventId =
+                button.dataset.id;
+
+            try {
+
+                await this.api.acknowledgeDegradationEvent(eventId);
+
+                UI.success("Degradación reconocida.");
+
+                // Recarga solo esta sección con el estado ya
+                // actualizado -- mismo criterio que handleSaveEvaluation()
+                // más abajo (nunca cierra el modal, nunca recarga las
+                // otras tres secciones innecesariamente).
+                if (this.currentEvaluationCalibrationId) {
+
+                    const refreshed =
+                        await this.api.getDegradationStatus(this.currentEvaluationCalibrationId);
+
+                    if (this.degradationSectionContainer) {
+
+                        this.degradationSectionContainer.innerHTML =
+                            this.buildDegradationSectionHtml(refreshed);
+
+                    }
+
+                }
+
+            } catch (err) {
+
+                UI.error(err.message);
+
+            }
+
+        }
+
+        // Entrega 2.6.1.29, secciones 10/12 -- genera una propuesta de
+        // recalibración a partir de este evento. Confirmación previa
+        // (mismo criterio que activar/rechazar una propuesta en
+        // recalibrationProposals.js -- una acción que crea un registro
+        // nuevo y corre una simulación merece un paso explícito, no un
+        // click accidental) y estado de carga simple mientras corre
+        // (mockup de la sección 10: "Generando propuesta... Simulando
+        // el offset candidato sobre las predicciones recientes").
+        if (action === "generate-proposal") {
+
+            const eventId =
+                button.dataset.id;
+
+            const confirmed =
+                typeof UI.confirm === "function"
+                    ? await UI.confirm("¿Generar una propuesta de recalibración a partir de esta alerta de degradación? Se simulará un offset candidato sobre las predicciones recientes -- la propuesta solo se guardará si la simulación muestra una mejora real.")
+                    : true;
+
+            if (!confirmed) {
+
+                return;
+
+            }
+
+            const previousButtonHtml =
+                button.outerHTML;
+
+            button.disabled =
+                true;
+
+            button.textContent =
+                "Generando propuesta...";
+
+            try {
+
+                await this.api.generateProposalFromDegradation(eventId);
+
+                UI.success("Propuesta de recalibración generada. Todavía requiere aprobación explícita -- no se activó automáticamente.");
+
+                if (this.currentEvaluationCalibrationId) {
+
+                    const refreshed =
+                        await this.api.getDegradationStatus(this.currentEvaluationCalibrationId);
+
+                    if (this.degradationSectionContainer) {
+
+                        this.degradationSectionContainer.innerHTML =
+                            this.buildDegradationSectionHtml(refreshed);
+
+                    }
+
+                }
+
+            } catch (err) {
+
+                UI.error(err.message);
+
+                // Restaura el botón tal cual estaba -- la sección no se
+                // vuelve a pedir al servidor si la generación falló
+                // (mismo criterio que el resto de acciones de este
+                // modal: un error nunca deja la UI en un estado a medio
+                // camino).
+                button.outerHTML =
+                    previousButtonHtml;
+
+            }
+
+        }
+
+    }
+
+    /*
+     * Entrega 2.6.1.32, sección 10 -- "EFECTIVIDAD DE RECALIBRACIÓN",
+     * reproduce el mockup de esa sección casi literal: mejora esperada/
+     * real, efectividad, checks ✓/✗ por métrica, muestra, semáforo.
+     * `effectiveness` es la respuesta EN VIVO de GET .../effectiveness
+     * -- nunca se recalcula nada aquí, solo se formatea.
+     */
+    buildEffectivenessSectionHtml(effectiveness) {
+
+        const evaluateButtonHtml =
+            `<button type="button" class="btn btn-sm btn-outline-primary mt-2" data-action="save-effectiveness">Registrar evaluación</button>`;
+
+        if (!effectiveness || effectiveness.status === "NOT_APPLICABLE") {
+
+            return `<p class="text-muted mb-0">Esta calibración no reemplazó a ninguna otra -- no hay una mejora esperada contra la cual medir efectividad.</p>`;
+
+        }
+
+        if (effectiveness.status === "PENDING") {
+
+            return `
+                <p class="mb-2"><span class="badge bg-secondary">EVALUACIÓN INSUFICIENTE</span></p>
+                <p class="text-muted small mb-0">Todavía no hay predicciones evaluadas desde que esta calibración se activó.</p>
+            `;
+
+        }
+
+        const table = `
+            <table class="table table-sm mb-2">
+                <thead><tr><th></th><th class="text-end">ESPERADO</th><th class="text-end">REAL</th></tr></thead>
+                <tbody>
+                    <tr><td>MAE</td><td class="text-end">${this.formatValue(effectiveness.simulated.maeHours)} h</td><td class="text-end">${this.formatValue(effectiveness.real.maeHours)} h</td></tr>
+                    <tr><td>Mejora</td><td class="text-end">${this.formatValue(effectiveness.expected.mae)}%</td><td class="text-end">${this.formatValue(effectiveness.actual.mae)}%</td></tr>
+                    <tr><td>RMSE</td><td class="text-end">${this.formatValue(effectiveness.simulated.rmseHours)} h</td><td class="text-end">${this.formatValue(effectiveness.real.rmseHours)} h</td></tr>
+                    <tr><td>Mejora</td><td class="text-end">${this.formatValue(effectiveness.expected.rmse)}%</td><td class="text-end">${this.formatValue(effectiveness.actual.rmse)}%</td></tr>
+                    <tr><td>Bias</td><td class="text-end">${this.formatValue(effectiveness.simulated.biasHours)} h</td><td class="text-end">${this.formatValue(effectiveness.real.biasHours)} h</td></tr>
+                </tbody>
+            </table>
+        `;
+
+        if (effectiveness.status === "PRELIMINARY") {
+
+            return `
+                ${table}
+                <p class="mb-2"><span class="badge bg-secondary">EVALUACIÓN PRELIMINAR</span></p>
+                <p class="text-muted small mb-2">${effectiveness.sampleSize} / ${effectiveness.minimumSampleSize} observaciones mínimas -- todavía sin conclusión definitiva.</p>
+                ${evaluateButtonHtml}
+            `;
+
+        }
+
+        if (effectiveness.status === "REGRESSION") {
+
+            return `
+                ${table}
+                <p class="mb-2"><span class="badge bg-danger">⚠ REGRESIÓN</span></p>
+                <p class="mb-2">Esta calibración está mostrando una regresión.</p>
+                <p class="text-muted small mb-2">La automatización de rollback no está disponible todavía -- esta calibración no se desactivará automáticamente.</p>
+                ${evaluateButtonHtml}
+            `;
+
+        }
+
+        const checks =
+            effectiveness.checks || {};
+
+        return `
+            ${table}
+            <p class="fs-4 fw-bold mb-2">Efectividad: ${effectiveness.effectivenessScore}%</p>
+            <p class="mb-1">MAE ${checks.mae ? "✓" : "✗"}</p>
+            <p class="mb-1">RMSE ${checks.rmse ? "✓" : "✗"}</p>
+            <p class="mb-2">Bias ${checks.bias ? "✓" : "✗"}</p>
+            <p class="mb-2">Muestra: ${effectiveness.sampleSize} / ${effectiveness.minimumSampleSize}</p>
+            <p class="mb-2"><span class="badge bg-${EFFECTIVENESS_TIER_BADGES[effectiveness.tier.code] || "secondary"}">${effectiveness.tier.emoji} ${effectiveness.tier.label}</span></p>
+            ${evaluateButtonHtml}
+        `;
+
+    }
+
+    /*
+     * Sección 14/17 -- "Registrar evaluación" persiste un snapshot
+     * inmutable explícito (mismo criterio que "Evaluar" en la sección
+     * de RAW-vs-CALIBRADO más abajo, 2.6.1.17) -- la tarjeta en sí ya
+     * se refresca sola en cada apertura del modal (EN VIVO), este botón
+     * solo congela un snapshot para el historial de auditoría.
+     */
+    async handleEffectivenessSectionClick(e) {
+
+        const button =
+            e.target.closest('button[data-action="save-effectiveness"]');
+
+        if (!button || !this.currentEvaluationCalibrationId) {
+
+            return;
+
+        }
+
+        try {
+
+            await this.api.evaluateEffectiveness(this.currentEvaluationCalibrationId);
+
+            UI.success("Evaluación de efectividad registrada.");
+
+            const refreshed =
+                await this.api.getEffectiveness(this.currentEvaluationCalibrationId);
+
+            if (this.effectivenessSectionContainer) {
+
+                this.effectivenessSectionContainer.innerHTML =
+                    this.buildEffectivenessSectionHtml(refreshed);
+
+            }
+
+        } catch (err) {
+
+            UI.error(err.message);
+
+        }
 
     }
 
@@ -1724,6 +2208,22 @@ document.addEventListener(
         if (openVersionsId) {
 
             window.maturationCalibrationsPage.openVersions(openVersionsId);
+
+        }
+
+        // Entrega 2.6.1.29 -- deep-link simétrico a "openVersionsId" de
+        // arriba, pero hacia el modal de Evaluación (donde vive la
+        // sección "Estado del modelo" de 2.6.1.28). Lo usa el enlace
+        // "Ver alerta origen" de recalibrationProposals.js cuando una
+        // propuesta viene del flujo de degradación -- ese modal nunca
+        // tuvo, hasta ahora, forma de abrirse directamente desde fuera
+        // de esta misma página.
+        const openEvaluationId =
+            params.get("openEvaluationId");
+
+        if (openEvaluationId) {
+
+            window.maturationCalibrationsPage.openEvaluation(openEvaluationId);
 
         }
 

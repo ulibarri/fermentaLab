@@ -88,6 +88,19 @@ const MaturationAlertAuditLog = sequelize.define("MaturationAlertAuditLog", {
 
     },
 
+    // Entrega 2.6.1.29, sección 14 -- paralelo a `alertId` (arriba, que
+    // apunta a maturation_model_alerts), pero para acciones originadas
+    // en una MaturationCalibrationDegradationEvent (2.6.1.28) en vez de
+    // una alerta de salud. Solo GENERATE_RECALIBRATION_PROPOSAL_FROM_DEGRADATION
+    // la envía; el resto de acciones la dejan en null.
+    degradationEventId: {
+
+        type: DataTypes.INTEGER,
+
+        allowNull: true
+
+    },
+
     createdAt: {
 
         type: DataTypes.DATE,

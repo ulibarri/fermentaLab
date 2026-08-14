@@ -15,6 +15,9 @@ const MaturationModelCalibration = require("./MaturationModelCalibration");
 const MaturationCalibrationEvaluation = require("./MaturationCalibrationEvaluation");
 const MaturationModelAlert = require("./MaturationModelAlert");
 const MaturationAlertAuditLog = require("./MaturationAlertAuditLog");
+const MaturationCalibrationDegradationEvent = require("./MaturationCalibrationDegradationEvent");
+const RecalibrationProposalEvaluation = require("./RecalibrationProposalEvaluation");
+const RecalibrationEffectivenessEvaluation = require("./RecalibrationEffectivenessEvaluation");
 
 Category.hasMany(Product, {
 
@@ -520,6 +523,108 @@ MaturationAlertAuditLog.belongsTo(
 
 );
 
+// --- Entrega 2.6.1.28: MaturationCalibrationDegradationEvent -------
+// Sección 12: "desde la alerta -> Calibración v4" y "desde la
+// calibración -> Alertas de degradación" -- asociación bidireccional,
+// a diferencia de MaturationAlertAuditLog (2.6.1.23, solo un sentido,
+// sin pantalla que la recorra todavía). Aquí SÍ hay una pantalla en
+// ambos sentidos (el detalle de la calibración muestra sus propios
+// eventos de degradación).
+
+MaturationModelCalibration.hasMany(
+
+    MaturationCalibrationDegradationEvent,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "degradationEvents"
+
+    }
+
+);
+
+MaturationCalibrationDegradationEvent.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "calibration"
+
+    }
+
+);
+
+// --- Entrega 2.6.1.30: RecalibrationProposalEvaluation -------------
+// Bidireccional -- misma razón que MaturationCalibrationDegradationEvent
+// (2.6.1.28): sí hay una pantalla que recorre ambos sentidos (el
+// detalle de la propuesta muestra su historial de evaluaciones).
+
+MaturationModelCalibration.hasMany(
+
+    RecalibrationProposalEvaluation,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "proposalEvaluations"
+
+    }
+
+);
+
+RecalibrationProposalEvaluation.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "proposal"
+
+    }
+
+);
+
+// --- Entrega 2.6.1.32: RecalibrationEffectivenessEvaluation --------
+// Bidireccional, mismo criterio que RecalibrationProposalEvaluation
+// (2.6.1.30) -- el detalle de una calibración activada muestra su
+// propio historial de evaluaciones de efectividad.
+
+MaturationModelCalibration.hasMany(
+
+    RecalibrationEffectivenessEvaluation,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "effectivenessEvaluations"
+
+    }
+
+);
+
+RecalibrationEffectivenessEvaluation.belongsTo(
+
+    MaturationModelCalibration,
+
+    {
+
+        foreignKey: "calibrationId",
+
+        as: "calibration"
+
+    }
+
+);
+
 module.exports = {
 
     sequelize,
@@ -552,5 +657,11 @@ module.exports = {
 
     MaturationModelAlert,
 
-    MaturationAlertAuditLog
+    MaturationAlertAuditLog,
+
+    MaturationCalibrationDegradationEvent,
+
+    RecalibrationProposalEvaluation,
+
+    RecalibrationEffectivenessEvaluation
 };

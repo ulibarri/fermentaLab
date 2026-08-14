@@ -26,9 +26,13 @@
                 Dashboard de desempeño
             </a>
 
-            <a href="/maturation/alerts" class="btn btn-outline-danger">
+            <a href="/maturation/alerts" class="btn btn-outline-danger me-2">
                 Centro de alertas
                 <span id="navAlertsBadge" class="badge bg-danger ms-1" style="display:none"></span>
+            </a>
+
+            <a href="/maturation/model-history" class="btn btn-outline-dark">
+                Evolución del modelo
             </a>
 
         </div>
@@ -165,6 +169,14 @@
                 <th>Propuesta</th>
 
                 <th>Estado</th>
+
+                <!-- Entrega 2.6.1.30, sección 16/17 -- Score/
+                     Recomendación son "—" hasta que la propuesta se
+                     evalúa explícitamente (nunca se calculan solo por
+                     listar, sección 15). -->
+                <th>Score</th>
+
+                <th>Recomendación</th>
 
                 <th>Creada por</th>
 

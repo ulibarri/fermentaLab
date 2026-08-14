@@ -24,7 +24,18 @@ class MaturationAlertAuditLogRepository
 
     }
 
-    async log({ userId, action, modelId, alertId, sourceCalibrationId, targetCalibrationId, reason, previousCalibrationId }) {
+    /*
+     * Entrega 2.6.1.29, sección 13/14 -- `degradationEventId` es
+     * aditivo (solo GENERATE_RECALIBRATION_PROPOSAL_FROM_DEGRADATION la
+     * envía) y `transaction` es un parámetro nuevo y opcional: permite
+     * que esta escritura participe en la MISMA transacción que crea la
+     * propuesta y la asocia al evento (CalibrationDegradationService.
+     * generateProposal()), sin cambiar ningún llamador existente
+     * (approve()/reject()/activate() de RecalibrationProposalService,
+     * 2.6.1.24/25, siguen llamando `log()` sin transacción, tal como
+     * siempre lo hicieron).
+     */
+    async log({ userId, action, modelId, alertId, sourceCalibrationId, targetCalibrationId, reason, previousCalibrationId, degradationEventId }, transaction = null) {
 
         return await this.model.create({
 
@@ -47,9 +58,13 @@ class MaturationAlertAuditLogRepository
 
             // Entrega 2.6.1.25, sección 8 -- solo ACTIVATE_RECALIBRATION
             // la envía.
-            previousCalibrationId: previousCalibrationId ?? null
+            previousCalibrationId: previousCalibrationId ?? null,
 
-        });
+            // Entrega 2.6.1.29, sección 14 -- solo
+            // GENERATE_RECALIBRATION_PROPOSAL_FROM_DEGRADATION la envía.
+            degradationEventId: degradationEventId ?? null
+
+        }, { transaction });
 
     }
 
