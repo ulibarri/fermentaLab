@@ -1,0 +1,299 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Análisis de acciones operativas</h1>
+
+            <small class="text-muted">
+                Qué observamos históricamente después de cada tipo de acción registrada ante una alerta -- sin afirmar que la acción haya causado el resultado.
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/prediction-alerts/trends" class="btn btn-outline-warning me-2">
+                Tendencias
+            </a>
+
+            <a href="/fermentations" class="btn btn-outline-info me-2">
+                Panel operativo
+            </a>
+
+            <a href="/batches" class="btn btn-outline-secondary">
+                Lotes
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Acción 15 -- aviso metodológico permanente, parte del producto,
+         no solo documentación técnica. -->
+    <div class="alert alert-secondary small mb-4">
+        Los resultados muestran la evolución observada después de las acciones registradas. No demuestran que una acción haya causado una mejora, resolución o empeoramiento del lote.
+    </div>
+
+    <!-- Acción 8 -- filtros -->
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-2">
+                    <label for="oaFilterFrom" class="form-label mb-1">Desde</label>
+                    <input type="date" id="oaFilterFrom" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="oaFilterTo" class="form-label mb-1">Hasta</label>
+                    <input type="date" id="oaFilterTo" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="oaFilterActionType" class="form-label mb-1">Tipo de acción</label>
+                    <select id="oaFilterActionType" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <% actionTypes.forEach(function (t) { %>
+
+                            <option value="<%= t.code %>"><%= t.label %></option>
+
+                        <% }); %>
+
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="oaFilterEffectiveness" class="form-label mb-1">Resultado</label>
+                    <select id="oaFilterEffectiveness" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <option value="PENDING">Pendiente</option>
+
+                        <option value="IMPROVED">Mejora observada</option>
+
+                        <option value="UNCHANGED">Sin cambio significativo</option>
+
+                        <option value="WORSENED">Empeoramiento observado</option>
+
+                        <option value="RESOLVED">Resuelta</option>
+
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="oaFilterSeverity" class="form-label mb-1">Severidad original</label>
+                    <select id="oaFilterSeverity" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <option value="WARNING">🟡 Advertencia</option>
+
+                        <option value="SIGNIFICANT">🟠 Significativa</option>
+
+                        <option value="CRITICAL">🔴 Crítica</option>
+
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="oaFilterProduct" class="form-label mb-1">Producto / receta</label>
+                    <select id="oaFilterProduct" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <% products.forEach(function (product) { %>
+
+                            <option value="<%= product.id %>"><%= product.name %></option>
+
+                        <% }); %>
+
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="row gy-2 mt-1">
+
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-outline-secondary w-100" id="btnOaClearFilters">Limpiar filtros</button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="oaLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <!-- Acción 16 -- estados sin datos -->
+    <div id="oaEmptyNoActions" class="alert alert-secondary" style="display:none">
+        No hay acciones operativas registradas para el período seleccionado.
+    </div>
+
+    <div id="oaEmptyNoResults" class="alert alert-secondary" style="display:none">
+        No se encontraron acciones con los filtros seleccionados.
+    </div>
+
+    <div id="oaContent" style="display:none">
+
+        <div id="oaNoEvaluatedNotice" class="alert alert-warning small" style="display:none">
+            Existen acciones registradas, pero todavía no hay suficientes datos posteriores para evaluar su evolución.
+        </div>
+
+        <!-- Acción 12 -- tarjetas de resumen general -->
+        <div class="row text-center gy-2 mb-4">
+
+            <div class="col-6 col-md-3 col-lg">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">ACCIONES</div>
+                        <div class="fs-4 fw-bold" id="oaCardTotal">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">EVALUADAS</div>
+                        <div class="fs-4 fw-bold" id="oaCardEvaluated">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">PENDIENTES</div>
+                        <div class="fs-4 fw-bold" id="oaCardPending">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg">
+                <div class="card border-success h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">MEJORARON</div>
+                        <div class="fw-bold" id="oaCardImproved">—</div>
+                        <div class="small text-muted" id="oaCardImprovedPct">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">SIN CAMBIO</div>
+                        <div class="fw-bold" id="oaCardUnchanged">—</div>
+                        <div class="small text-muted" id="oaCardUnchangedPct">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg">
+                <div class="card border-danger h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">EMPEORARON</div>
+                        <div class="fw-bold" id="oaCardWorsened">—</div>
+                        <div class="small text-muted" id="oaCardWorsenedPct">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg">
+                <div class="card border-success h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">RESUELTAS</div>
+                        <div class="fw-bold" id="oaCardResolved">—</div>
+                        <div class="small text-muted" id="oaCardResolvedPct">—</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Acción 6/13 -- resultados por tipo de acción -->
+        <h5>Resultados por tipo de acción</h5>
+
+        <p class="text-muted small">
+            ¿Qué observamos históricamente después de realizar cada tipo de acción?
+        </p>
+
+        <div class="table-responsive mb-4">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+                        <th>Acción</th>
+                        <th>Total</th>
+                        <th>Evaluadas</th>
+                        <th>Mejoró</th>
+                        <th>Sin cambio</th>
+                        <th>Empeoró</th>
+                        <th>Resolvió</th>
+                        <th>Pendientes</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="oaByTypeBody">
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Acción 7 -- resultados por severidad original -->
+        <h5>Resultados por severidad</h5>
+
+        <p class="text-muted small">
+            En qué tipo de situaciones se realizan y evolucionan las acciones registradas -- no evidencia de causalidad.
+        </p>
+
+        <div class="table-responsive">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+                        <th>Severidad original</th>
+                        <th>Total</th>
+                        <th>Evaluadas</th>
+                        <th>Mejoró</th>
+                        <th>Sin cambio</th>
+                        <th>Empeoró</th>
+                        <th>Resolvió</th>
+                        <th>Pendientes</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="oaBySeverityBody">
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/js/operationalActions/analyticsApi.js"></script>
+    <script src="/js/operationalActions/analytics.js"></script>

@@ -15,6 +15,7 @@ const carbonationApiRoutes = require("./routes/api/carbonation");
 const maturationApiRoutes = require("./routes/api/maturation");
 const fermentationApiRoutes = require("./routes/api/fermentations");
 const predictionAlertApiRoutes = require("./routes/api/predictionAlerts");
+const operationalActionApiRoutes = require("./routes/api/operationalActions");
 
 
 
@@ -84,6 +85,10 @@ app.use(
 app.use(
     "/api/prediction-alerts",
     predictionAlertApiRoutes
+);
+app.use(
+    "/api/operational-actions",
+    operationalActionApiRoutes
 );
 
 
