@@ -18,6 +18,7 @@ const MaturationAlertAuditLog = require("./MaturationAlertAuditLog");
 const MaturationCalibrationDegradationEvent = require("./MaturationCalibrationDegradationEvent");
 const RecalibrationProposalEvaluation = require("./RecalibrationProposalEvaluation");
 const RecalibrationEffectivenessEvaluation = require("./RecalibrationEffectivenessEvaluation");
+const ProductionPredictionAlert = require("./ProductionPredictionAlert");
 
 Category.hasMany(Product, {
 
@@ -625,6 +626,57 @@ RecalibrationEffectivenessEvaluation.belongsTo(
 
 );
 
+// --- Entrega 2.7.0.3: ProductionPredictionAlert --------------------
+// Bidireccional, mismo criterio que MaturationCalibrationDegradationEvent
+// (2.6.1.28) -- el detalle del lote muestra su propio historial de
+// alertas de desviación, y cada alerta necesita resolver qué predicción
+// concreta la disparó/mantiene (asociación con MaturationPrediction,
+// deliberadamente de UN SOLO sentido -- el detalle de una predicción no
+// necesita listar "todas las alertas que alguna vez la referenciaron",
+// a diferencia del lote).
+
+ProductionBatch.hasMany(
+
+    ProductionPredictionAlert,
+
+    {
+
+        foreignKey: "productionBatchId",
+
+        as: "predictionAlerts"
+
+    }
+
+);
+
+ProductionPredictionAlert.belongsTo(
+
+    ProductionBatch,
+
+    {
+
+        foreignKey: "productionBatchId",
+
+        as: "productionBatch"
+
+    }
+
+);
+
+ProductionPredictionAlert.belongsTo(
+
+    MaturationPrediction,
+
+    {
+
+        foreignKey: "predictionId",
+
+        as: "prediction"
+
+    }
+
+);
+
 module.exports = {
 
     sequelize,
@@ -663,5 +715,7 @@ module.exports = {
 
     RecalibrationProposalEvaluation,
 
-    RecalibrationEffectivenessEvaluation
+    RecalibrationEffectivenessEvaluation,
+
+    ProductionPredictionAlert
 };

@@ -11,6 +11,9 @@ const measurementController =
 const predictionController =
     require("../../controllers/api/MaturationPredictionApiController");
 
+const predictionAlertController =
+    require("../../controllers/api/ProductionPredictionAlertApiController");
+
 const router =
     express.Router();
 
@@ -48,6 +51,14 @@ router.get("/:id/maturation/evaluation", measurementController.maturationEvaluat
 router.get("/:id/predictions", predictionController.predictionsForBatch);
 
 router.get("/:id/predictions/current", predictionController.currentPredictionForBatch);
+
+// Entrega 2.7.0.3, sección 13 -- mismo criterio de orden que
+// "/predictions"/"/predictions/current" arriba: "/prediction-alerts/active"
+// tiene un segmento literal más, así que nunca compite con
+// "/prediction-alerts" a secas.
+router.get("/:id/prediction-alerts", predictionAlertController.history);
+
+router.get("/:id/prediction-alerts/active", predictionAlertController.active);
 
 module.exports =
     router;

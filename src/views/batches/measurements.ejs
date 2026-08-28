@@ -130,6 +130,30 @@
 
     </div>
 
+    <!-- Entrega 2.7.0.3 -- "ESTADO DE PREDICCIÓN": alerta operativa de
+         desviación de la fermentación (independiente de la predicción
+         auditable de abajo, y también independiente de las alertas de
+         degradación del modelo, que viven en /maturation/alerts). -->
+    <div class="card mb-4">
+
+        <div class="card-header d-flex justify-content-between align-items-center">
+
+            <span>Estado de predicción</span>
+
+            <button id="btnPredictionAlertHistory" class="btn btn-outline-secondary btn-sm">
+                Historial de alertas
+            </button>
+
+        </div>
+
+        <div class="card-body" id="predictionAlertStatus">
+
+            <p class="text-muted mb-0">Cargando...</p>
+
+        </div>
+
+    </div>
+
     <div class="card mb-4">
 
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -245,4 +269,5 @@
     <script>
         window.BATCH_ID = <%= batch.id %>;
         window.BATCH_STATUS = "<%= batch.status %>";
+        window.BATCH_NUMBER = "<%= batch.batchNumber %>";
     </script>
