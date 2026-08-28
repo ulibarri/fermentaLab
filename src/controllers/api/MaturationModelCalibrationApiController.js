@@ -16,6 +16,12 @@ const RecalibrationEffectivenessService =
 const recalibrationEffectivenessService =
     new RecalibrationEffectivenessService();
 
+const RecalibrationEffectivenessSummaryService =
+    require("../../services/RecalibrationEffectivenessSummaryService");
+
+const recalibrationEffectivenessSummaryService =
+    new RecalibrationEffectivenessSummaryService();
+
 const parseOptionalId = (req, key) =>
 
     req.query[key] !== undefined && req.query[key] !== ""
@@ -664,6 +670,59 @@ exports.effectivenessHistory = async (req, res) => {
             success: true,
 
             data: history
+
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
+/*
+ * Entrega 2.6.1.33 -- análisis global de la efectividad del proceso de
+ * recalibración (secciones 1-11/15). Ruta LITERAL
+ * "/calibrations/effectiveness-summary" -- debe registrarse ANTES que
+ * "/calibrations/:id" en el router (ver src/routes/api/maturation.js),
+ * mismo motivo de siempre en este módulo ("/calibrations/health",
+ * 2.6.1.18; "/calibrations/history", 2.6.1.31): si fuera al revés,
+ * Express interpretaría "effectiveness-summary" como el valor de :id y
+ * esta ruta nunca se alcanzaría. El spec de esta entrega (sección 15)
+ * nombra el endpoint como "/api/calibrations/effectiveness-summary"
+ * (sin el prefijo "/maturation") -- se mantiene el namespace real de
+ * este router, mismo criterio ya aplicado en 2.6.1.31 para
+ * "/calibrations/history".
+ */
+
+// GET /api/maturation/calibrations/effectiveness-summary -- EN VIVO, nunca persiste
+exports.effectivenessSummary = async (req, res) => {
+
+    try {
+
+        const summary =
+            await recalibrationEffectivenessSummaryService.getSummary({
+
+                model: req.query.model || undefined,
+
+                dateFrom: req.query.dateFrom || undefined,
+
+                dateTo: req.query.dateTo || undefined
+
+            });
+
+        res.json({
+
+            success: true,
+
+            data: summary
 
         });
 

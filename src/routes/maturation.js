@@ -22,6 +22,9 @@ const recalibrationProposalsController =
 const modelHistoryController =
     require("../controllers/MaturationModelHistoryController");
 
+const effectivenessSummaryController =
+    require("../controllers/MaturationEffectivenessSummaryController");
+
 router.get("/statistics", controller.index);
 
 router.get("/calibrations", calibrationsController.index);
@@ -34,6 +37,10 @@ router.get("/recalibration-proposals", recalibrationProposalsController.index);
 
 // Entrega 2.6.1.31, sección 11 -- "Predicción -> Evolución del modelo".
 router.get("/model-history", modelHistoryController.index);
+
+// Entrega 2.6.1.33 -- cierre del bloque 2.6.1.x, "Evolución del modelo
+// -> Análisis global del proceso de recalibración".
+router.get("/effectiveness-summary", effectivenessSummaryController.index);
 
 module.exports =
     router;

@@ -1,0 +1,120 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Análisis global del proceso de recalibración</h1>
+
+            <small class="text-muted">
+                No es "¿esta recalibración funcionó?" (eso vive en el detalle de cada calibración) -- es "¿el mecanismo de recalibración, como proceso, está funcionando bien?"
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/maturation/calibrations" class="btn btn-outline-warning me-2">
+                Calibraciones
+            </a>
+
+            <a href="/maturation/model-history" class="btn btn-outline-dark me-2">
+                Evolución del modelo
+            </a>
+
+            <a href="/maturation/recalibration-proposals" class="btn btn-outline-success">
+                Propuestas de recalibración
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-2">
+                    <label for="efFilterModel" class="form-label mb-1">Modelo</label>
+                    <select id="efFilterModel" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="LINEAR">LINEAR</option>
+                        <option value="EXPONENTIAL">EXPONENTIAL</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="efFilterFrom" class="form-label mb-1">Desde</label>
+                    <input type="date" id="efFilterFrom" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="efFilterTo" class="form-label mb-1">Hasta</label>
+                    <input type="date" id="efFilterTo" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="efFilterEstado" class="form-label mb-1">Estado</label>
+                    <select id="efFilterEstado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="VALID">Válida</option>
+                        <option value="REGRESSION">Regresión</option>
+                        <option value="PRELIMINARY">Preliminar</option>
+                        <option value="PENDING">Pendiente</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="efFilterNivel" class="form-label mb-1">Nivel de efectividad</label>
+                    <select id="efFilterNivel" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="HIGH">🟢 Alta</option>
+                        <option value="MODERATE">🟡 Moderada</option>
+                        <option value="LOW">🟠 Baja</option>
+                        <option value="INEFFECTIVE">🔴 Inefectiva</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-secondary w-100" id="btnEfClearFilters">Limpiar filtros</button>
+                </div>
+
+            </div>
+
+            <div class="row gy-2 mt-1">
+
+                <div class="col-md-4">
+                    <label for="efFilterSearch" class="form-label mb-1">Buscar calibración (id o versión)</label>
+                    <input type="text" id="efFilterSearch" class="form-control" placeholder="Ej. 42 o v7">
+                </div>
+
+            </div>
+
+            <p class="text-muted small mt-2 mb-0">
+                "Modelo"/"Desde"/"Hasta" filtran los datos consultados al servidor. "Estado"/"Nivel de efectividad"/"Buscar" filtran únicamente la tabla de recalibraciones de abajo (sección de trazabilidad) -- los indicadores globales de arriba siempre reflejan el filtro de servidor completo.
+            </p>
+
+        </div>
+
+    </div>
+
+    <div id="efLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <div id="efContent">
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/chartjs/chart.umd.min.js"></script>
+
+    <script src="/js/maturation/alertBadge.js"></script>
+    <script src="/js/maturation/effectivenessSummaryApi.js"></script>
+    <script src="/js/maturation/processEffectivenessCharts.js"></script>
+    <script src="/js/maturation/effectivenessSummary.js"></script>

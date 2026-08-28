@@ -133,6 +133,14 @@ router.get("/calibrations/health", calibrationController.healthAll);
 // documento).
 router.get("/calibrations/history", calibrationHistoryController.history);
 
+// Entrega 2.6.1.33, sección 15 -- ruta LITERAL
+// "/calibrations/effectiveness-summary" declarada ANTES que
+// "/calibrations/:id", mismo motivo de siempre en este router (ver
+// "/calibrations/health" y "/calibrations/history" arriba): si fuera al
+// revés, Express interpretaría "effectiveness-summary" como el valor de
+// :id y esta ruta nunca se alcanzaría.
+router.get("/calibrations/effectiveness-summary", calibrationController.effectivenessSummary);
+
 router.get("/calibrations/:id", calibrationController.detail);
 
 router.put("/calibrations/:id", calibrationController.update);
