@@ -1,0 +1,394 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Tendencias de alertas</h1>
+
+            <small class="text-muted">
+                Cómo está evolucionando históricamente el comportamiento de las alertas de fermentación -- frecuencia, severidad, duración y resolución.
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/operational-actions/analytics" class="btn btn-outline-success me-2">
+                Análisis de acciones
+            </a>
+
+            <a href="/fermentations" class="btn btn-outline-info me-2">
+                Panel operativo
+            </a>
+
+            <a href="/batches" class="btn btn-outline-secondary">
+                Lotes
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Acción 13 -- filtros -->
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-2">
+                    <label for="atFilterFrom" class="form-label mb-1">Desde</label>
+                    <input type="date" id="atFilterFrom" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="atFilterTo" class="form-label mb-1">Hasta</label>
+                    <input type="date" id="atFilterTo" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="atFilterSeverity" class="form-label mb-1">Severidad</label>
+                    <select id="atFilterSeverity" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <option value="WARNING">🟡 Advertencia</option>
+
+                        <option value="SIGNIFICANT">🟠 Significativa</option>
+
+                        <option value="CRITICAL">🔴 Crítica</option>
+
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="atFilterStatus" class="form-label mb-1">Estado</label>
+                    <select id="atFilterStatus" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <option value="ACTIVE">Activas</option>
+
+                        <option value="RESOLVED">Resueltas</option>
+
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="atFilterProduct" class="form-label mb-1">Producto / receta</label>
+                    <select id="atFilterProduct" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <% products.forEach(function (product) { %>
+
+                            <option value="<%= product.id %>"><%= product.name %></option>
+
+                        <% }); %>
+
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="atFilterPhase" class="form-label mb-1">Fase</label>
+                    <select id="atFilterPhase" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <option value="F1">F1</option>
+
+                        <option value="F2">F2</option>
+
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="row gy-2 mt-1 align-items-end">
+
+                <div class="col-md-3">
+                    <label for="atFilterGroupBy" class="form-label mb-1">Agrupar evolución por</label>
+                    <select id="atFilterGroupBy" class="form-select">
+
+                        <option value="DAY">Día</option>
+
+                        <option value="WEEK" selected>Semana</option>
+
+                        <option value="MONTH">Mes</option>
+
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-outline-secondary w-100" id="btnAtClearFilters">Limpiar filtros</button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="atLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <!-- Acción 17 -- estados sin datos -->
+    <div id="atEmptyNoAlerts" class="alert alert-secondary" style="display:none">
+        No hay alertas registradas para el período seleccionado.
+    </div>
+
+    <div id="atContent" style="display:none">
+
+        <!-- Acción 3 -- resumen -->
+        <div class="row text-center gy-2 mb-4">
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">TOTAL</div>
+                        <div class="fs-4 fw-bold" id="atCardTotal">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">ACTIVAS</div>
+                        <div class="fs-4 fw-bold" id="atCardActive">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card border-success h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">RESUELTAS</div>
+                        <div class="fs-4 fw-bold" id="atCardResolved">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">TASA RESOLUCIÓN</div>
+                        <div class="fw-bold" id="atCardResolutionRate">—</div>
+                        <div class="small text-muted" id="atCardResolutionRateNote">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">DURACIÓN PROMEDIO</div>
+                        <div class="fw-bold" id="atCardAvgDuration">—</div>
+                        <div class="small text-muted" id="atCardAvgDurationNote">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card border-danger h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">CRÍTICAS</div>
+                        <div class="fs-4 fw-bold" id="atCardCritical">—</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Acción 10 -- alertas activas más antiguas -->
+        <h5>Alertas activas más antiguas</h5>
+
+        <div id="atOldestActiveEmpty" class="text-muted small mb-3" style="display:none">
+            No hay alertas activas en este momento.
+        </div>
+
+        <div class="table-responsive mb-4">
+
+            <table class="table table-striped table-hover align-middle" id="atOldestActiveTable" style="display:none">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Lote</th>
+                        <th>Severidad</th>
+                        <th>Activa desde hace</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody id="atOldestActiveBody">
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Acción 4/5/7 -- evolución en el tiempo -->
+        <h5>Evolución en el tiempo</h5>
+
+        <p class="text-muted small">
+            Alertas creadas frente a alertas resueltas por período. Una disminución en las creadas no implica automáticamente una mejora del proceso -- podría deberse a cambios en el volumen de producción.
+        </p>
+
+        <div class="table-responsive mb-4">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Período</th>
+                        <th>Creadas</th>
+                        <th>Resueltas</th>
+                        <th>🟡 Advertencia</th>
+                        <th>🟠 Significativa</th>
+                        <th>🔴 Crítica</th>
+                    </tr>
+                </thead>
+
+                <tbody id="atTimelineBody">
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Acción 6 -- distribución por severidad -->
+        <h5>Distribución por severidad</h5>
+
+        <div class="table-responsive mb-4">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Severidad</th>
+                        <th>Cantidad</th>
+                        <th>Porcentaje</th>
+                    </tr>
+                </thead>
+
+                <tbody id="atSeverityBody">
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Acción 8/9 -- duración de las alertas -->
+        <h5>Duración de las alertas</h5>
+
+        <div id="atDurationEmpty" class="alert alert-secondary small" style="display:none">
+            No existen alertas resueltas para calcular la duración.
+        </div>
+
+        <div id="atDurationContent">
+
+            <div class="row text-center gy-2 mb-2">
+
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body py-2">
+                            <div class="small text-muted">PROMEDIO</div>
+                            <div class="fw-bold" id="atDurationAvg">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body py-2">
+                            <div class="small text-muted">MEDIANA</div>
+                            <div class="fw-bold" id="atDurationMedian">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body py-2">
+                            <div class="small text-muted">MÍNIMA</div>
+                            <div class="fw-bold" id="atDurationMin">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body py-2">
+                            <div class="small text-muted">MÁXIMA</div>
+                            <div class="fw-bold" id="atDurationMax">—</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <p class="small text-muted mb-3" id="atDurationSampleNote">—</p>
+
+            <p class="text-muted small">
+                Duración por severidad -- descriptivo, no implica que una severidad sea intrínsecamente "más difícil" de resolver.
+            </p>
+
+            <div class="table-responsive mb-4">
+
+                <table class="table table-striped table-hover align-middle">
+
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Severidad</th>
+                            <th>Promedio</th>
+                            <th>Mediana</th>
+                            <th>Mínima</th>
+                            <th>Máxima</th>
+                            <th>Muestra</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="atDurationBySeverityBody">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- Acción 11 -- alertas por producto / receta -->
+        <h5>Alertas por producto / receta</h5>
+
+        <div class="table-responsive">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Alertas</th>
+                        <th>Resueltas</th>
+                        <th>Activas</th>
+                        <th>Críticas</th>
+                    </tr>
+                </thead>
+
+                <tbody id="atByProductBody">
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/js/predictionAlerts/trendsApi.js"></script>
+    <script src="/js/predictionAlerts/trends.js"></script>

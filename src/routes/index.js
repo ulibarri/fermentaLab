@@ -8,6 +8,7 @@ const batchRoutes = require("./batches");
 const maturationRoutes = require("./maturation");
 const fermentationRoutes = require("./fermentations");
 const operationalActionRoutes = require("./operationalActions");
+const predictionAlertTrendRoutes = require("./predictionAlertTrends");
 
 // Dashboard
 router.get("/", dashboardController.index);
@@ -26,5 +27,8 @@ router.use("/fermentations", fermentationRoutes);
 
 // Entrega 2.7.0.7 -- desglose/análisis histórico de acciones operativas.
 router.use("/operational-actions", operationalActionRoutes);
+
+// Entrega 2.7.0.8 -- tendencias y evolución histórica de alertas.
+router.use("/prediction-alerts/trends", predictionAlertTrendRoutes);
 
 module.exports = router;
