@@ -19,6 +19,7 @@ const MaturationCalibrationDegradationEvent = require("./MaturationCalibrationDe
 const RecalibrationProposalEvaluation = require("./RecalibrationProposalEvaluation");
 const RecalibrationEffectivenessEvaluation = require("./RecalibrationEffectivenessEvaluation");
 const ProductionPredictionAlert = require("./ProductionPredictionAlert");
+const ProductionAlertAction = require("./ProductionAlertAction");
 
 Category.hasMany(Product, {
 
@@ -677,6 +678,40 @@ ProductionPredictionAlert.belongsTo(
 
 );
 
+// --- Entrega 2.7.0.5: ProductionAlertAction ------------------------
+// Bidireccional -- el detalle de una alerta muestra su propio
+// historial de acciones (sección 12), mismo criterio que
+// MaturationCalibrationDegradationEvent (2.6.1.28) y
+// RecalibrationProposalEvaluation (2.6.1.30).
+
+ProductionPredictionAlert.hasMany(
+
+    ProductionAlertAction,
+
+    {
+
+        foreignKey: "alertId",
+
+        as: "actions"
+
+    }
+
+);
+
+ProductionAlertAction.belongsTo(
+
+    ProductionPredictionAlert,
+
+    {
+
+        foreignKey: "alertId",
+
+        as: "alert"
+
+    }
+
+);
+
 module.exports = {
 
     sequelize,
@@ -717,5 +752,7 @@ module.exports = {
 
     RecalibrationEffectivenessEvaluation,
 
-    ProductionPredictionAlert
+    ProductionPredictionAlert,
+
+    ProductionAlertAction
 };

@@ -19,6 +19,12 @@ const MaturationModelConfigurationRepository =
 const MaturationPredictionService =
     require("./MaturationPredictionService");
 
+const ProductionPredictionAlertService =
+    require("./ProductionPredictionAlertService");
+
+const ProductionAlertActionService =
+    require("./ProductionAlertActionService");
+
 const VALID_PHASES = ["F1", "F2", "FINAL"];
 
 class ProductionMeasurementService
@@ -40,6 +46,12 @@ class ProductionMeasurementService
 
         this.predictionService =
             new MaturationPredictionService();
+
+        this.alertService =
+            new ProductionPredictionAlertService();
+
+        this.alertActionService =
+            new ProductionAlertActionService();
 
     }
 
@@ -430,13 +442,96 @@ class ProductionMeasurementService
 
             try {
 
-                await this.predictionService.generatePrediction(batchId);
+                // Entrega 2.7.0.2, sección 2 -- se pasa la medición
+                // recién creada como `triggerMeasurement` para que
+                // generatePrediction() pueda decidir si es relevante
+                // para el modelo (no toda medición F1 dispara un
+                // recálculo -- ver PredictionRelevance.js).
+                const newPrediction =
+                    await this.predictionService.generatePrediction(batchId, { triggerMeasurement: created });
+
+                // Entrega 2.7.0.3, sección 14 -- "Nueva medición ->
+                // Actualizar predicción -> Evaluar desviación". Solo se
+                // evalúa cuando REALMENTE se generó una predicción nueva
+                // (newPrediction no es null) -- si generatePrediction()
+                // fue un no-op (medición irrelevante, sin modelo activo,
+                // etc.), no hay nada nuevo contra qué comparar y
+                // reevaluar sería trabajo redundante sobre exactamente
+                // el mismo par actual/anterior ya evaluado la vez
+                // pasada. Envuelto en su PROPIO try/catch, independiente
+                // del de generatePrediction() -- un fallo al evaluar la
+                // desviación nunca debe impedir que la predicción recién
+                // generada quede guardada (sección 15: "una alerta
+                // jamás debe impedir registrar una medición").
+                if (newPrediction) {
+
+                    try {
+
+                        await this.alertService.evaluateForBatch(batchId);
+
+                    } catch (alertErr) {
+
+                        console.error(
+
+                            `[ProductionMeasurementService] No se pudo evaluar la desviación de predicción para el lote ${batchId}:`,
+
+                            alertErr.message
+
+                        );
+
+                    }
+
+                    // Entrega 2.7.0.6, sección 4/14 -- "Nueva medición ->
+                    // Predicción actualizada -> Evaluar acción pendiente".
+                    // Mismo criterio de siempre: SOLO cuando realmente
+                    // hubo una predicción nueva (ya garantizado por estar
+                    // dentro de este `if`), y en su PROPIO try/catch,
+                    // independiente del de arriba -- un fallo al evaluar
+                    // la efectividad de una acción nunca debe impedir que
+                    // la predicción ni la evaluación de desviación recién
+                    // calculadas queden guardadas (mismo principio que
+                    // sección 15 de 2.7.0.3, "una alerta jamás debe
+                    // impedir registrar una medición").
+                    try {
+
+                        await this.alertActionService.evaluatePendingActionsForBatch(batchId);
+
+                    } catch (actionErr) {
+
+                        console.error(
+
+                            `[ProductionMeasurementService] No se pudo evaluar la efectividad de acciones pendientes para el lote ${batchId}:`,
+
+                            actionErr.message
+
+                        );
+
+                    }
+
+                }
 
             } catch (err) {
 
-                // Silenciosamente ignorado a propósito -- ver comentario
-                // arriba. No se re-lanza ni se registra como error de la
-                // operación de guardar la medición.
+                // Entrega 2.7.0.2, sección 10 -- "se registra el error
+                // técnico": esto reemplaza el silencio total de
+                // 2.6.1.12 (comentario original: "no se re-lanza ni se
+                // registra como error"), un cambio deliberado pedido
+                // explícitamente por esta entrega. Las garantías de
+                // robustez de siempre NO cambian -- el error nunca se
+                // relanza, nunca bloquea ni revierte el guardado de la
+                // medición, y nunca sobrescribe la última predicción
+                // válida (eso ya lo garantiza la transacción interna de
+                // generatePrediction(), que no marca ninguna predicción
+                // anterior como no-vigente hasta haber creado con éxito
+                // la fila nueva). Solo se agrega la visibilidad que
+                // faltaba.
+                console.error(
+
+                    `[ProductionMeasurementService] No se pudo generar la predicción para el lote ${batchId} tras la medición ${created.id}:`,
+
+                    err.message
+
+                );
 
             }
 

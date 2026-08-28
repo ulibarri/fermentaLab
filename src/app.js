@@ -13,6 +13,7 @@ const batchApiRoutes = require("./routes/api/batches");
 const measurementApiRoutes = require("./routes/api/measurements");
 const carbonationApiRoutes = require("./routes/api/carbonation");
 const maturationApiRoutes = require("./routes/api/maturation");
+const predictionAlertApiRoutes = require("./routes/api/predictionAlerts");
 
 
 
@@ -74,6 +75,10 @@ app.use(
 app.use(
     "/api/maturation",
     maturationApiRoutes
+);
+app.use(
+    "/api/prediction-alerts",
+    predictionAlertApiRoutes
 );
 
 
