@@ -1,0 +1,218 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Panel operativo de fermentaciones</h1>
+
+            <small class="text-muted">
+                Qué está pasando ahora mismo con los lotes en fermentación
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/operational-actions/analytics" class="btn btn-outline-success me-2">
+                Análisis de acciones
+            </a>
+
+            <a href="/prediction-alerts/trends" class="btn btn-outline-warning me-2">
+                Tendencias
+            </a>
+
+            <a href="/batches" class="btn btn-outline-secondary me-2">
+                Lotes
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Sección 3: tarjetas de resumen -->
+    <div class="row text-center gy-2 mb-2">
+
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">Lotes activos</div>
+                    <div class="fs-4 fw-bold" id="fdSummaryActive">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card border-success h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">🟢 Normales</div>
+                    <div class="fs-4 fw-bold" id="fdSummaryNormal">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card border-warning h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">🟡 Atención</div>
+                    <div class="fs-4 fw-bold" id="fdSummaryWarning">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card border-danger h-100">
+                <div class="card-body py-2">
+                    <div class="small text-muted">🔴 Críticos</div>
+                    <div class="fs-4 fw-bold" id="fdSummaryCritical">—</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Sección 10: indicador de actualización -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <small class="text-muted" id="fdUpdatedAt">—</small>
+
+        <button type="button" class="btn btn-sm btn-outline-primary" id="btnFdRefresh">
+            Actualizar ahora
+        </button>
+
+    </div>
+
+    <!-- Sección 7: filtros -->
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-2">
+
+                    <label for="fdFilterPhase" class="form-label mb-1">Fase</label>
+
+                    <select id="fdFilterPhase" class="form-select">
+
+                        <option value="">Todas</option>
+
+                        <option value="F1">F1</option>
+
+                        <option value="F2">F2</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="fdFilterSeverity" class="form-label mb-1">Estado operativo</label>
+
+                    <select id="fdFilterSeverity" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <option value="NORMAL">🟢 Normal</option>
+
+                        <option value="WARNING">🟡 Atención</option>
+
+                        <option value="SIGNIFICANT">🟠 Desviación</option>
+
+                        <option value="CRITICAL">🔴 Crítica</option>
+
+                        <option value="NO_DISPONIBLE">⚪ Predicción no disponible</option>
+
+                        <option value="ESPERANDO_DATOS">⚪ Sin predicción</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="fdFilterProduct" class="form-label mb-1">Producto / receta</label>
+
+                    <select id="fdFilterProduct" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <% products.forEach(function (product) { %>
+
+                            <option value="<%= product.id %>"><%= product.name %></option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="fdFilterAlerts" class="form-label mb-1">Lotes</label>
+
+                    <select id="fdFilterAlerts" class="form-select">
+
+                        <option value="">Todos los activos</option>
+
+                        <option value="true">Solo con alertas</option>
+
+                        <option value="false">Solo normales</option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="fdLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <div id="fdEmpty" class="alert alert-secondary" style="display:none">
+        No hay lotes activos que coincidan con los filtros seleccionados.
+    </div>
+
+    <!-- Sección 1/4: tabla operativa -->
+    <table class="table table-striped table-hover align-middle">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Lote</th>
+
+                <th>Producto / receta</th>
+
+                <th>Fase</th>
+
+                <th>Última medición</th>
+
+                <th>Predicción</th>
+
+                <th>Desviación</th>
+
+                <th>Estado</th>
+
+                <th width="160">Acciones</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="fdTableBody">
+        </tbody>
+
+    </table>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/js/fermentations/dashboardApi.js"></script>
+    <script src="/js/fermentations/dashboard.js"></script>

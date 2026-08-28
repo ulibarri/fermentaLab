@@ -6,6 +6,7 @@ const dashboardController = require("../controllers/dashboardController");
 const productRoutes = require("./products");
 const batchRoutes = require("./batches");
 const maturationRoutes = require("./maturation");
+const fermentationRoutes = require("./fermentations");
 
 // Dashboard
 router.get("/", dashboardController.index);
@@ -18,5 +19,8 @@ router.use("/batches", batchRoutes);
 
 // Maduración
 router.use("/maturation", maturationRoutes);
+
+// Entrega 2.7.0.4 -- panel operativo de monitoreo de fermentaciones.
+router.use("/fermentations", fermentationRoutes);
 
 module.exports = router;
