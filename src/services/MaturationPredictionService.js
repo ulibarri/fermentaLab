@@ -22,6 +22,18 @@ const MaturationCalculator =
 const PredictionEvaluation =
     require("../utils/PredictionEvaluation");
 
+const ModelAccuracyMetrics =
+    require("../utils/ModelAccuracyMetrics");
+
+const PredictionConfidence =
+    require("../utils/PredictionConfidence");
+
+const PredictionRelevance =
+    require("../utils/PredictionRelevance");
+
+const PredictionConvergence =
+    require("../utils/PredictionConvergence");
+
 /*
  * Auditoría y trazabilidad de predicciones (Entrega 2.6.1.12).
  *
@@ -219,6 +231,145 @@ class MaturationPredictionService
     }
 
     /*
+     * Entrega 2.7.0.1, sección 8 -- convierte un conjunto de
+     * predicciones YA CONSULTADAS (isCurrent=true únicamente, mismo
+     * criterio de "un lote cuenta una sola vez" que
+     * ModelAccuracyMetricsService, 2.6.1.14) en pares {errorHours,
+     * direction} listos para ModelAccuracyMetrics.summarizeModelAccuracy().
+     * Reutiliza PredictionEvaluation.evaluatePrediction() tal cual --
+     * nunca recalcula un error a mano. Requiere que cada fila venga con
+     * su `productionBatch` incluido (ver findByCalibration()/
+     * findByModelConfiguration() en el repositorio) para leer
+     * `finishedAt` sin una consulta aparte.
+     */
+    _evaluatedPairsFromPredictions(rows) {
+
+        return (rows || [])
+
+            .filter(row => row.isCurrent)
+
+            .map(row => {
+
+                const actualMaturationAt =
+                    row.productionBatch ? row.productionBatch.finishedAt : null;
+
+                if (!actualMaturationAt) {
+
+                    return null;
+
+                }
+
+                const evaluation =
+                    PredictionEvaluation.evaluatePrediction({
+
+                        predictedMaturationAt: row.predictedMaturationAt,
+
+                        predictedDurationHours: row.predictedDurationHours,
+
+                        actualMaturationAt
+
+                    });
+
+                if (evaluation.status !== "EVALUATED") {
+
+                    return null;
+
+                }
+
+                return { errorHours: evaluation.errorHours, direction: evaluation.direction };
+
+            })
+
+            .filter(Boolean);
+
+    }
+
+    /*
+     * Entrega 2.7.0.1, secciones 1/8 -- ventana de confianza para la
+     * predicción que se está a punto de generar. Fuente de evidencia,
+     * en orden de preferencia (nunca mezcladas):
+     *
+     *   1. "CALIBRATION" -- histórico de predicciones que efectivamente
+     *      usaron ESTA MISMA calibración (`calibrationId`, cuando
+     *      aplica) -- la evidencia más específica posible: mide "qué
+     *      tan bien predice el modelo CON este offset ya aplicado".
+     *   2. "MODEL" -- si no hay calibración aplicable (o su histórico
+     *      todavía no tiene ninguna predicción evaluada), se usa el
+     *      histórico general de ESTA configuración de modelo
+     *      (`modelConfigurationId`), sin importar qué calibración (si
+     *      alguna) tenía cada predicción pasada -- mismo alcance que
+     *      alimenta el dashboard de desempeño (2.6.1.20).
+     *   3. "UNAVAILABLE" -- sin evidencia evaluada en ningún alcance:
+     *      la predicción se genera igual (nunca se bloquea, mismo
+     *      criterio que el resto de este servicio), simplemente sin
+     *      ventana de confianza que mostrar todavía.
+     *
+     * Se computa DENTRO de la misma transacción que crea la predicción
+     * y su resultado se PERSISTE en la fila -- nunca se recalcula
+     * después (sección de integridad: "las predicciones históricas no
+     * se modifican cuando cambia la calibración activa").
+     */
+    async _computeConfidence({ calibrationId, modelConfigurationId, modelType, predictedMaturationAt, transaction }) {
+
+        if (!predictedMaturationAt) {
+
+            return PredictionConfidence.evaluate({ predictedMaturationAt: null, rmseHours: null, sampleSize: 0, basis: "UNAVAILABLE" });
+
+        }
+
+        let pairs =
+            [];
+
+        let basis =
+            "UNAVAILABLE";
+
+        if (calibrationId) {
+
+            const calibrationRows =
+                await this.repository.findByCalibration(calibrationId);
+
+            pairs =
+                this._evaluatedPairsFromPredictions(calibrationRows);
+
+            if (pairs.length > 0) {
+
+                basis = "CALIBRATION";
+
+            }
+
+        }
+
+        if (pairs.length === 0) {
+
+            const modelRows =
+                await this.repository.findByModelConfiguration(modelConfigurationId);
+
+            pairs =
+                this._evaluatedPairsFromPredictions(modelRows);
+
+            basis =
+                pairs.length > 0 ? "MODEL" : "UNAVAILABLE";
+
+        }
+
+        const summary =
+            ModelAccuracyMetrics.summarizeModelAccuracy(modelType, pairs);
+
+        return PredictionConfidence.evaluate({
+
+            predictedMaturationAt,
+
+            rmseHours: summary.rmseHours,
+
+            sampleSize: summary.sampleSize,
+
+            basis
+
+        });
+
+    }
+
+    /*
      * Genera (y persiste) una nueva predicción trazable para un lote,
      * usando el modelo ACTIVE configurado para su recipeVersion. Nunca
      * modifica predicciones anteriores del mismo lote -- solo marca
@@ -229,8 +380,22 @@ class MaturationPredictionService
      *
      * Regresa null (sin lanzar error, sin bloquear nada) cuando falta
      * algún prerequisito -- ver comentario de la clase.
+     *
+     * Entrega 2.7.0.2, sección 2 -- el segundo parámetro pasa de ser un
+     * `transaction` posicional a un objeto de opciones (nadie más en el
+     * proyecto pasaba una transacción aquí -- único llamador,
+     * ProductionMeasurementService.createForBatch(), confirmado por
+     * búsqueda, así que no hay compatibilidad hacia atrás que romper).
+     * `triggerMeasurement`, cuando viene, es la medición F1 recién
+     * guardada que disparó esta llamada -- se usa exclusivamente para
+     * decidir relevancia (¿esta medición concreta trae un valor para la
+     * métrica que usa el modelo?), nunca para el cálculo en sí (que
+     * sigue usando TODAS las mediciones F1 del lote, como siempre). Si
+     * no se pasa (compatibilidad con cualquier llamador futuro que
+     * quiera forzar un recálculo sin una medición puntual de por
+     * medio), no se aplica ningún filtro de relevancia.
      */
-    async generatePrediction(batchId, transaction = null) {
+    async generatePrediction(batchId, { transaction = null, triggerMeasurement = null } = {}) {
 
         const batch =
             await this.batchRepository.findById(batchId);
@@ -245,6 +410,31 @@ class MaturationPredictionService
             batch.recipeVersion;
 
         if (!recipeVersion || !recipeVersion.maturationMetric) {
+
+            return null;
+
+        }
+
+        // Entrega 2.7.0.2, sección 2 -- "no debemos asumir que
+        // cualquier medición modifica el modelo". Se evalúa ANTES de
+        // tocar cualquier repositorio adicional (mismo criterio de
+        // "prerequisitos más baratos primero" que el resto de este
+        // método) -- una medición F1 que no trae ph/brix/SG (solo PSI,
+        // temperatura, notas, etc.) no dispara un recálculo.
+        if (
+
+            triggerMeasurement &&
+            !PredictionRelevance.isRelevant({
+
+                measurement: triggerMeasurement,
+
+                phase: "F1",
+
+                maturationMetric: recipeVersion.maturationMetric
+
+            })
+
+        ) {
 
             return null;
 
@@ -347,6 +537,24 @@ class MaturationPredictionService
             const predictedDurationHours =
                 this._computeDurationHours(firstMeasurement.measurementDate, predictedMaturationAt);
 
+            // Entrega 2.7.0.1 -- ventana de confianza, calculada ANTES
+            // de marcar/crear nada, sobre el histórico YA existente
+            // (nunca incluye la fila que se está a punto de crear).
+            const confidence =
+                await this._computeConfidence({
+
+                    calibrationId: calibrationResult.calibrationId,
+
+                    modelConfigurationId: activeConfiguration.id,
+
+                    modelType: activeConfiguration.modelType,
+
+                    predictedMaturationAt,
+
+                    transaction: t
+
+                });
+
             await this.repository.markAllNotCurrent(batchId, t);
 
             const created =
@@ -368,11 +576,29 @@ class MaturationPredictionService
 
                     isCurrent: true,
 
+                    // Entrega 2.7.0.2, sección 3 -- hardcodeado a "F1"
+                    // por ahora: este método no genera todavía
+                    // predicciones de F2 (ver comentario del parámetro
+                    // `triggerMeasurement` arriba).
+                    phase: "F1",
+
                     rawPredictedMaturationAt: calibrationResult.rawEta,
 
                     calibrationOffsetHours: calibrationResult.calibrationOffsetHours,
 
-                    calibrationId: calibrationResult.calibrationId
+                    calibrationId: calibrationResult.calibrationId,
+
+                    confidenceLowerBound: confidence.lowerBound,
+
+                    confidenceUpperBound: confidence.upperBound,
+
+                    confidenceWindowHours: confidence.windowHours,
+
+                    confidencePercentage: confidence.confidencePercentage,
+
+                    confidenceBasis: confidence.basis,
+
+                    confidenceSampleSize: confidence.sampleSize
 
                 }, t);
 
@@ -406,6 +632,43 @@ class MaturationPredictionService
             batchId: Number(batchId),
 
             predictions: predictions.map(p => this._serializeSummary(p))
+
+        };
+
+    }
+
+    /*
+     * Entrega 2.7.0.2, sección 11 -- "predicción vigente" de un lote,
+     * de forma aislada (sin el resto del historial). Reutiliza
+     * `isCurrent` como fuente de verdad (sección 4: "no necesitamos
+     * duplicar físicamente el valor 'actual'... si puede determinarse
+     * de forma segura mediante la última predicción válida" -- el
+     * mismo criterio ya aplicado desde 2.6.1.12). `current: null` es un
+     * resultado legítimo (lote sin ninguna predicción todavía), nunca
+     * un error.
+     */
+    async getCurrent(batchId) {
+
+        const batch =
+            await this.batchRepository.findById(batchId);
+
+        if (!batch) {
+
+            throw new Error("Batch not found");
+
+        }
+
+        const predictions =
+            await this.repository.findByBatch(batchId);
+
+        const current =
+            (predictions || []).find(p => p.isCurrent) || null;
+
+        return {
+
+            batchId: Number(batchId),
+
+            current: current ? this._serializeSummary(current) : null
 
         };
 
@@ -482,6 +745,9 @@ class MaturationPredictionService
             // ({id,batchId,predictedHours,calibrationId,calibration:{...}}).
             calibrationId: prediction.calibrationId ?? null,
 
+            // Entrega 2.7.0.2, sección 3.
+            phase: prediction.phase ?? null,
+
             model: modelConfiguration
                 ? {
 
@@ -526,7 +792,10 @@ class MaturationPredictionService
 
             evaluation,
 
-            calibration: this._serializeCalibration(prediction)
+            calibration: this._serializeCalibration(prediction),
+
+            // Entrega 2.7.0.1 -- ver _serializeConfidence().
+            confidence: this._serializeConfidence(prediction)
 
         };
 
@@ -647,7 +916,9 @@ class MaturationPredictionService
 
             evaluation,
 
-            calibration: this._serializeCalibration(prediction)
+            calibration: this._serializeCalibration(prediction),
+
+            confidence: this._serializeConfidence(prediction)
 
         };
 
@@ -735,7 +1006,10 @@ class MaturationPredictionService
 
                     status: evaluation.status,
 
-                    calibration: this._serializeCalibration(p)
+                    calibration: this._serializeCalibration(p),
+
+                    // Entrega 2.7.0.1 -- ver _serializeConfidence().
+                    confidence: this._serializeConfidence(p)
 
                 };
 
@@ -753,6 +1027,13 @@ class MaturationPredictionService
 
         }
 
+        // Entrega 2.7.0.2, secciones 7/8 -- convergencia hacia el
+        // resultado real, calculada sobre esta misma lista cronológica
+        // ya evaluada (nunca una segunda consulta ni un segundo
+        // cálculo de error independiente).
+        const convergence =
+            PredictionConvergence.summarize(evaluatedPredictions);
+
         return {
 
             batchId: Number(batchId),
@@ -761,7 +1042,43 @@ class MaturationPredictionService
 
             status,
 
-            predictions: evaluatedPredictions
+            predictions: evaluatedPredictions,
+
+            convergence
+
+        };
+
+    }
+
+    /*
+     * Entrega 2.7.0.1 -- forma serializada de la ventana de confianza
+     * YA PERSISTIDA en la fila (nunca recalculada aquí -- ver
+     * _computeConfidence(), que solo corre una vez, al generar). Un
+     * `applicable:false` distingue "sin evidencia histórica todavía"
+     * (predicciones anteriores a esta entrega, o el primer lote de un
+     * modelo nuevo) de un 0% inventado.
+     */
+    _serializeConfidence(record) {
+
+        const applicable =
+            record.confidenceLowerBound !== null && record.confidenceLowerBound !== undefined &&
+            record.confidenceUpperBound !== null && record.confidenceUpperBound !== undefined;
+
+        return {
+
+            applicable,
+
+            basis: record.confidenceBasis ?? "UNAVAILABLE",
+
+            lowerBound: record.confidenceLowerBound ?? null,
+
+            upperBound: record.confidenceUpperBound ?? null,
+
+            windowHours: record.confidenceWindowHours ?? null,
+
+            confidencePercentage: record.confidencePercentage ?? null,
+
+            sampleSize: record.confidenceSampleSize ?? 0
 
         };
 
@@ -783,6 +1100,9 @@ class MaturationPredictionService
 
             modelType: record.modelType,
 
+            // Entrega 2.7.0.2, sección 3.
+            phase: record.phase ?? null,
+
             predictedAt: record.predictedAt,
 
             predictedMaturationAt: record.predictedMaturationAt,
@@ -791,7 +1111,10 @@ class MaturationPredictionService
 
             isCurrent: record.isCurrent,
 
-            calibration: this._serializeCalibration(record)
+            calibration: this._serializeCalibration(record),
+
+            // Entrega 2.7.0.1 -- ver _serializeConfidence().
+            confidence: this._serializeConfidence(record)
 
         };
 

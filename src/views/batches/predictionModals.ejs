@@ -62,6 +62,8 @@
 
                             <th>Predicción</th>
 
+                            <th>Ventana</th>
+
                             <th>Real</th>
 
                             <th>Error</th>
@@ -86,6 +88,171 @@
                     "Real" es la fecha en que se finalizó F1 para el lote (evento existente, no una fecha nueva). "Pendiente" significa que el lote todavía no ha finalizado F1 — no es lo mismo que un error de 0 horas.
                 </p>
 
+                <!-- Entrega 2.7.0.2, secciones 7/8 -->
+                <div id="predictionConvergenceBlock"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.7.0.3, sección 12 — "HISTORIAL DE ALERTAS": alertas de
+     desviación de la fermentación, activas y resueltas. Modal
+     independiente del historial de predicciones de arriba (entidades
+     distintas, ProductionPredictionAlert vs. MaturationPrediction). -->
+<div class="modal fade" id="modalPredictionAlertHistory" tabindex="-1" aria-labelledby="modalPredictionAlertHistoryTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalPredictionAlertHistoryTitle">
+                    Historial de alertas
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <table class="table table-sm table-bordered mb-0">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Fecha</th>
+
+                            <th>Severidad</th>
+
+                            <th>Desviación</th>
+
+                            <th>Mensaje</th>
+
+                            <th>Estado</th>
+
+                            <th>Resuelta</th>
+
+                            <th></th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="predictionAlertHistoryBody">
+
+                    </tbody>
+
+                </table>
+
+                <p class="text-muted small mt-2 mb-0">
+                    Una alerta indica que el comportamiento observado se aleja de lo esperado por el modelo — nunca implica automáticamente contaminación, pérdida del lote, o un problema microbiológico. La decisión operativa sigue siendo del usuario.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Entrega 2.7.0.5 -- "Registro de acciones operativas ante alertas":
+     historial de acciones de UNA alerta específica (detección + acciones
+     del operador + resolución, sección 12) más el formulario para
+     registrar una acción nueva (sección 2). Nunca modifica mediciones,
+     predicciones, ni el estado del lote (secciones 10/11) -- solo
+     documenta. Nunca permite resolver/cerrar la alerta manualmente
+     (sección 16). -->
+<div class="modal fade" id="modalAlertAction" tabindex="-1" aria-labelledby="modalAlertActionTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalAlertActionTitle">
+                    Acciones de la alerta
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <dl class="row mb-3">
+
+                    <dt class="col-2">Lote:</dt>
+                    <dd class="col-10" id="alertActionBatchLabel">—</dd>
+
+                    <dt class="col-2">Alerta:</dt>
+                    <dd class="col-10" id="alertActionAlertLabel">—</dd>
+
+                </dl>
+
+                <p class="fw-bold mb-1">Historial</p>
+
+                <div id="alertActionTimeline" class="mb-4">
+                    <p class="text-muted small mb-0">Cargando...</p>
+                </div>
+
+                <hr>
+
+                <p class="fw-bold mb-2">Registrar acción operativa</p>
+
+                <div id="alertActionFormError" class="alert alert-danger small py-2 px-3" style="display:none"></div>
+
+                <div class="mb-2">
+                    <label for="alertActionType" class="form-label mb-1">Tipo de acción</label>
+                    <select id="alertActionType" class="form-select form-select-sm">
+                        <option value="">Seleccionar</option>
+                        <option value="NO_INTERVENTION">Sin intervención</option>
+                        <option value="INSPECTION">Inspección</option>
+                        <option value="TEMPERATURE_ADJUSTMENT">Ajuste de temperatura</option>
+                        <option value="LOCATION_TRANSFER">Traslado de ubicación</option>
+                        <option value="MEASUREMENT_REVIEW">Revisión de mediciones</option>
+                        <option value="ADDITIONAL_SAMPLE">Toma de muestra adicional</option>
+                        <option value="FERMENTATION_CONDITIONS_CHANGE">Cambio de condiciones de fermentación</option>
+                        <option value="EARLY_TERMINATION">Finalización anticipada</option>
+                        <option value="OTHER">Otra</option>
+                    </select>
+                </div>
+
+                <div class="mb-2">
+                    <label for="alertActionDescription" class="form-label mb-1">Descripción <span class="text-muted small" id="alertActionDescriptionHint"></span></label>
+                    <textarea id="alertActionDescription" class="form-control form-control-sm" rows="2"></textarea>
+                </div>
+
+                <div class="mb-2">
+                    <label for="alertActionExpectedResult" class="form-label mb-1">Resultado esperado</label>
+                    <textarea id="alertActionExpectedResult" class="form-control form-control-sm" rows="2"></textarea>
+                </div>
+
+                <div class="mb-2">
+                    <label for="alertActionNotes" class="form-label mb-1">Observaciones</label>
+                    <textarea id="alertActionNotes" class="form-control form-control-sm" rows="2"></textarea>
+                </div>
+
+                <div class="mb-0">
+                    <label for="alertActionCreatedBy" class="form-label mb-1">Registrado por (opcional)</label>
+                    <input type="text" id="alertActionCreatedBy" class="form-control form-control-sm" placeholder="Tu nombre">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnSaveAlertAction">Guardar</button>
             </div>
 
         </div>

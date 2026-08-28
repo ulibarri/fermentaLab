@@ -95,6 +95,15 @@ router.get("/predictions/:id", predictionController.detail);
 
 router.get("/batches/:batchId/prediction-analysis", predictionController.batchAnalysis);
 
+// Entrega 2.7.0.1, secciones 1-6 -- capa OPERATIVA (distinta de la
+// analítica de arriba): estado en vivo del lote frente a su ventana de
+// confianza, y alerta de deriva entre sus dos predicciones vigentes más
+// recientes. Mismo namespace "/batches/:batchId/..." que
+// "prediction-analysis" -- ambas son vistas derivadas del historial de
+// predicciones de un lote, solo que ésta responde "¿cómo va el lote
+// AHORA MISMO?" en vez de "¿qué tan buena fue cada predicción?".
+router.get("/batches/:batchId/operational-status", predictionController.operationalStatus);
+
 // Entrega 2.6.1.16 -- gestión y activación de calibraciones (sección 12,
 // 7 endpoints). Las rutas de acción (:id/approve, :id/activate, ...) se
 // declaran antes de "/:id" a secas -- mismo criterio de siempre en este

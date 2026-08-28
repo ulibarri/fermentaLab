@@ -155,6 +155,82 @@ const MaturationPrediction = sequelize.define("MaturationPrediction", {
 
     },
 
+    // --- Entrega 2.7.0.1: predicción operativa -----------------------
+    //
+    // Ventana de confianza alrededor de `predictedMaturationAt`,
+    // calculada UNA SOLA VEZ al generar esta predicción (nunca
+    // recalculada retroactivamente, mismo criterio de inmutabilidad que
+    // el resto de esta fila -- ver PredictionConfidence.js y
+    // MaturationPredictionService._computeConfidence()). Todas nullable:
+    // sin evidencia histórica suficiente, no hay ventana que mostrar.
+    confidenceLowerBound: {
+
+        type: DataTypes.DATE,
+
+        allowNull: true
+
+    },
+
+    confidenceUpperBound: {
+
+        type: DataTypes.DATE,
+
+        allowNull: true
+
+    },
+
+    confidenceWindowHours: {
+
+        type: DataTypes.FLOAT,
+
+        allowNull: true
+
+    },
+
+    confidencePercentage: {
+
+        type: DataTypes.FLOAT,
+
+        allowNull: true
+
+    },
+
+    // "CALIBRATION" / "MODEL" / "UNAVAILABLE" -- ver PredictionConfidence.js.
+    confidenceBasis: {
+
+        type: DataTypes.STRING(20),
+
+        allowNull: true
+
+    },
+
+    confidenceSampleSize: {
+
+        type: DataTypes.INTEGER,
+
+        allowNull: true
+
+    },
+
+    // --- Entrega 2.7.0.2: seguimiento y actualización -----------------
+    //
+    // Fase de fermentación para la que se generó esta predicción
+    // (sección 3, campo mínimo de la entidad "ProductionPrediction").
+    // Nullable: filas anteriores a esta entrega no lo tienen
+    // retroactivamente (ver migración 20260817000000). Las filas nuevas
+    // siempre lo estampan como "F1" -- generatePrediction() no dispara
+    // todavía predicciones de F2 (sección 2: "no debemos introducir
+    // nuevas variables predictivas en esta entrega", que esta
+    // implementación interpreta como tampoco expandir el alcance a una
+    // fase nueva).
+    phase: {
+
+        type: DataTypes.STRING(10),
+
+        allowNull: true
+
+    },
+
     createdAt: {
 
         type: DataTypes.DATE,
