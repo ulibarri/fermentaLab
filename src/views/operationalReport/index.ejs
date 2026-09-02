@@ -1,0 +1,477 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Reporte consolidado</h1>
+
+            <small class="text-muted">
+                Cómo está funcionando el sistema predictivo y cómo se están comportando las fermentaciones en la operación real -- consolida indicadores ya existentes, no crea cálculos nuevos.
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/operational-actions/analytics" class="btn btn-outline-success me-2">
+                Análisis de acciones
+            </a>
+
+            <a href="/prediction-alerts/trends" class="btn btn-outline-warning me-2">
+                Tendencias
+            </a>
+
+            <a href="/fermentations" class="btn btn-outline-info me-2">
+                Panel operativo
+            </a>
+
+            <a href="/batches" class="btn btn-outline-secondary">
+                Lotes
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Sección "Importante" -- nunca se muestra un indicador único
+         "Sistema saludable"; el reporte solo consolida datos. -->
+    <div class="alert alert-secondary small mb-4">
+        Este reporte muestra los datos observados en cada área -- no calcula un puntaje único de "salud del sistema". Todavía no existe evidencia suficiente para combinar predicciones, calibraciones y operación en un solo indicador.
+    </div>
+
+    <!-- Sección 2/12/13 -- filtros: período (obligatorio) + producto/receta. -->
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row gy-2 align-items-end">
+
+                <div class="col-md-auto">
+                    <label class="form-label mb-1">Período</label>
+                    <div class="btn-group d-block" role="group">
+
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="orPreset7">7 días</button>
+
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="orPreset30">30 días</button>
+
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="orPreset90">90 días</button>
+
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="orFilterFrom" class="form-label mb-1">Desde</label>
+                    <input type="date" id="orFilterFrom" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="orFilterTo" class="form-label mb-1">Hasta</label>
+                    <input type="date" id="orFilterTo" class="form-control">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="orFilterProduct" class="form-label mb-1">Producto / receta</label>
+                    <select id="orFilterProduct" class="form-select">
+
+                        <option value="">Todos</option>
+
+                        <% products.forEach(function (product) { %>
+
+                            <option value="<%= product.id %>"><%= product.name %></option>
+
+                        <% }); %>
+
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-secondary w-100" id="btnOrClearFilters">Limpiar filtros</button>
+                </div>
+
+            </div>
+
+            <div class="row gy-2 mt-1">
+
+                <div class="col-12">
+                    <small class="text-muted" id="orPeriodLabel">—</small>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="orLoader" class="alert alert-info" style="display:none">
+        Cargando información...
+    </div>
+
+    <div id="orContent" style="display:none">
+
+        <!-- Sección 7 -- resumen ejecutivo, sin puntuación artificial. -->
+        <div class="card mb-4 border-primary">
+
+            <div class="card-header bg-primary text-white">
+                ESTADO GENERAL
+            </div>
+
+            <div class="card-body">
+
+                <div class="row text-center gy-2 mb-2">
+
+                    <div class="col-6 col-md-2">
+                        <div class="small text-muted">Predicciones verificadas</div>
+                        <div class="fs-4 fw-bold" id="orExecPredictionsVerified">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <div class="small text-muted">Precisión observada</div>
+                        <div class="fs-4 fw-bold" id="orExecAccuracy">—</div>
+                        <div class="small text-muted" id="orExecAccuracyModel">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <div class="small text-muted">Alertas activas</div>
+                        <div class="fs-4 fw-bold" id="orExecActiveAlerts">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <div class="small text-muted">Alertas críticas</div>
+                        <div class="fs-4 fw-bold text-danger" id="orExecCriticalAlerts">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <div class="small text-muted">Acciones evaluadas</div>
+                        <div class="fs-4 fw-bold" id="orExecActionsEvaluated">—</div>
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <div class="small text-muted">Alertas de calibración</div>
+                        <div class="fs-4 fw-bold" id="orExecCalibrationAlerts">—</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Bloque 1: Desempeño predictivo -->
+        <div class="card mb-4">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <span>1. Desempeño predictivo</span>
+
+                <a href="/maturation/dashboard" class="btn btn-sm btn-outline-primary">Ver detalles</a>
+
+            </div>
+
+            <div class="card-body">
+
+                <div id="orPredictionEmpty" class="alert alert-secondary small mb-0" style="display:none">
+                    No hay predicciones verificadas para el período seleccionado.
+                </div>
+
+                <div id="orPredictionContent" style="display:none">
+
+                    <div class="row text-center gy-2 mb-3">
+
+                        <div class="col-6 col-md-3">
+                            <div class="small text-muted">PREDICCIONES REALIZADAS</div>
+                            <div class="fw-bold" id="orPredMade">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-3">
+                            <div class="small text-muted">PREDICCIONES VERIFICADAS</div>
+                            <div class="fw-bold" id="orPredVerified">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-3">
+                            <div class="small text-muted">MEJOR MODELO OBSERVADO</div>
+                            <div class="fw-bold text-success" id="orPredBestModel">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-3">
+                            <div class="small text-muted">MODELO CON MAYOR ERROR</div>
+                            <div class="fw-bold text-danger" id="orPredWorstModel">—</div>
+                        </div>
+
+                    </div>
+
+                    <div class="table-responsive">
+
+                        <table class="table table-sm table-striped align-middle">
+
+                            <thead class="table-dark">
+
+                                <tr>
+                                    <th>Modelo</th>
+                                    <th>Muestra</th>
+                                    <th>Error promedio (MAE)</th>
+                                    <th>Error mediano</th>
+                                    <th>Precisión dentro del umbral (±15 min)</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="orPredModelsBody">
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                    <p class="text-muted small mb-0">Estas métricas describen el desempeño observado hasta ahora; no constituyen una recomendación automática de modelo.</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Bloque 2: Calibraciones -->
+        <div class="card mb-4">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <span>2. Calibraciones</span>
+
+                <div>
+                    <a href="/maturation/calibrations" class="btn btn-sm btn-outline-primary me-1">Ver calibraciones</a>
+                    <a href="/maturation/alerts" class="btn btn-sm btn-outline-warning">Ver alertas de calibración</a>
+                </div>
+
+            </div>
+
+            <div class="card-body">
+
+                <div id="orCalibrationEmpty" class="alert alert-secondary small mb-0" style="display:none">
+                    No hay calibraciones activas registradas.
+                </div>
+
+                <div id="orCalibrationContent" style="display:none">
+
+                    <div class="row text-center gy-2 mb-3">
+
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">ALERTAS DE CALIBRACIÓN</div>
+                            <div class="fw-bold" id="orCalAlerts">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">PROPUESTAS PENDIENTES</div>
+                            <div class="fw-bold" id="orCalProposals">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">CALIBRACIONES ACTIVAS</div>
+                            <div class="fw-bold" id="orCalActiveCount">—</div>
+                        </div>
+
+                    </div>
+
+                    <div class="table-responsive">
+
+                        <table class="table table-sm table-striped align-middle">
+
+                            <thead class="table-dark">
+
+                                <tr>
+                                    <th>Modelo</th>
+                                    <th>Producto / receta</th>
+                                    <th>Calibración activa</th>
+                                    <th>Última calibración</th>
+                                    <th>Estado</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="orCalibrationBody">
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                    <p class="text-muted small mb-0">El estado de calibración se calcula en vivo y no se filtra por el período del reporte.</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Bloque 3: Alertas y estabilidad operativa -->
+        <div class="card mb-4">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <span>3. Alertas y estabilidad operativa</span>
+
+                <a href="/prediction-alerts/trends" class="btn btn-sm btn-outline-primary">Ver tendencias</a>
+
+            </div>
+
+            <div class="card-body">
+
+                <div id="orAlertsEmpty" class="alert alert-secondary small mb-0" style="display:none">
+                    No hay alertas para el período seleccionado.
+                </div>
+
+                <div id="orAlertsContent" style="display:none">
+
+                    <div class="row text-center gy-2 mb-3">
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">TOTAL</div>
+                            <div class="fw-bold" id="orAlertTotal">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">ACTIVAS</div>
+                            <div class="fw-bold" id="orAlertActive">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">RESUELTAS</div>
+                            <div class="fw-bold" id="orAlertResolved">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">CRÍTICAS</div>
+                            <div class="fw-bold text-danger" id="orAlertCritical">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">DURACIÓN PROMEDIO</div>
+                            <div class="fw-bold" id="orAlertAvgDuration">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">CREADAS / RESUELTAS</div>
+                            <div class="fw-bold" id="orAlertCreatedResolved">—</div>
+                        </div>
+
+                    </div>
+
+                    <p class="text-muted small mb-0">No se infiere una tendencia (aumento/disminución) del inventario de alertas -- solo se muestran los conteos observados en el período.</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Bloque 4: Acciones y evolución observada -->
+        <div class="card mb-4">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <span>4. Acciones y evolución observada</span>
+
+                <a href="/operational-actions/analytics" class="btn btn-sm btn-outline-primary">Ver análisis completo</a>
+
+            </div>
+
+            <div class="card-body">
+
+                <div id="orActionsEmpty" class="alert alert-secondary small mb-0" style="display:none">
+                    No hay acciones operativas evaluadas para el período seleccionado.
+                </div>
+
+                <div id="orActionsContent" style="display:none">
+
+                    <div class="row text-center gy-2 mb-3">
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">REGISTRADAS</div>
+                            <div class="fw-bold" id="orActRegistered">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">EVALUADAS</div>
+                            <div class="fw-bold" id="orActEvaluated">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2">
+                            <div class="small text-muted">PENDING</div>
+                            <div class="fw-bold" id="orActPending">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2 col-lg">
+                            <div class="small text-muted">IMPROVED</div>
+                            <div class="fw-bold text-success" id="orActImproved">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2 col-lg">
+                            <div class="small text-muted">UNCHANGED</div>
+                            <div class="fw-bold" id="orActUnchanged">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2 col-lg">
+                            <div class="small text-muted">WORSENED</div>
+                            <div class="fw-bold text-danger" id="orActWorsened">—</div>
+                        </div>
+
+                        <div class="col-6 col-md-2 col-lg">
+                            <div class="small text-muted">RESOLVED</div>
+                            <div class="fw-bold text-success" id="orActResolved">—</div>
+                        </div>
+
+                    </div>
+
+                    <p class="text-muted small mb-0">Evolución observada después de la acción -- nunca "acción exitosa": no hay evidencia de causalidad.</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Sección 8 -- alertas prioritarias. -->
+        <div class="card mb-4">
+
+            <div class="card-header">
+                Alertas que requieren atención
+            </div>
+
+            <div class="card-body">
+
+                <div id="orPriorityEmpty" class="alert alert-secondary small mb-0" style="display:none">
+                    No hay alertas activas que requieran atención en este momento.
+                </div>
+
+                <ul class="list-group" id="orPriorityList" style="display:none">
+                </ul>
+
+            </div>
+
+        </div>
+
+        <!-- Sección 16 -- texto metodológico. -->
+        <div class="card mb-4">
+
+            <div class="card-header">
+                Cómo interpretar este reporte
+            </div>
+
+            <div class="card-body">
+
+                <ul class="small mb-0" id="orMethodologyList">
+                </ul>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <script src="/js/api/api.js"></script>
+    <script src="/js/ui/ui.js"></script>
+
+    <script src="/js/operationalReport/reportApi.js"></script>
+    <script src="/js/operationalReport/report.js"></script>

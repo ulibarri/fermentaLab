@@ -9,6 +9,7 @@ const maturationRoutes = require("./maturation");
 const fermentationRoutes = require("./fermentations");
 const operationalActionRoutes = require("./operationalActions");
 const predictionAlertTrendRoutes = require("./predictionAlertTrends");
+const operationalReportRoutes = require("./operationalReport");
 
 // Dashboard
 router.get("/", dashboardController.index);
@@ -30,5 +31,8 @@ router.use("/operational-actions", operationalActionRoutes);
 
 // Entrega 2.7.0.8 -- tendencias y evolución histórica de alertas.
 router.use("/prediction-alerts/trends", predictionAlertTrendRoutes);
+
+// Entrega 2.7.0.9 -- reporte consolidado predictivo-operativo.
+router.use("/operational-report", operationalReportRoutes);
 
 module.exports = router;
