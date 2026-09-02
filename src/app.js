@@ -17,6 +17,7 @@ const fermentationApiRoutes = require("./routes/api/fermentations");
 const predictionAlertApiRoutes = require("./routes/api/predictionAlerts");
 const operationalActionApiRoutes = require("./routes/api/operationalActions");
 const analyticsApiRoutes = require("./routes/api/analytics");
+const hydrometerApiRoutes = require("./routes/api/hydrometer");
 
 
 
@@ -94,6 +95,10 @@ app.use(
 app.use(
     "/api/analytics",
     analyticsApiRoutes
+);
+app.use(
+    "/api/hydrometer",
+    hydrometerApiRoutes
 );
 
 

@@ -1,0 +1,275 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h1>Tabla de conversión del hidrómetro</h1>
+
+            <small class="text-muted">
+
+                Configuración → Hidrómetros → Tabla de conversión -- fuente formal y versionada que usa la conversión automática SG / Brix / % Alcohol
+
+            </small>
+
+        </div>
+
+        <div>
+
+            <a href="/batches" class="btn btn-outline-secondary me-2">
+
+                Volver a lotes
+
+            </a>
+
+            <button id="btnNewTable" class="btn btn-primary">
+
+                Nueva tabla / versión
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <div id="loader" class="alert alert-info" style="display:none">
+
+        Cargando información...
+
+    </div>
+
+    <p class="text-muted small">
+
+        Ciclo de vida de cada versión: DRAFT (recién creada o importada) → VALIDATED (pasó todos los chequeos) → ACTIVE (la que usan las conversiones nuevas). Una vez ACTIVE o INACTIVE, una tabla ya no puede editarse -- para reemplazarla, crea una versión nueva ("Crear nueva versión" desde el detalle). Solo puede haber una tabla ACTIVE por instrumento a la vez; activar una versión nueva desactiva automáticamente la anterior, pero las mediciones ya guardadas conservan su propia referencia histórica.
+
+    </p>
+
+    <table id="tblHydrometerTables" class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Nombre</th>
+
+                <th>Fabricante</th>
+
+                <th>Instrumento</th>
+
+                <th>Versión</th>
+
+                <th>Estado</th>
+
+                <th>Rango SG</th>
+
+                <th>Filas</th>
+
+                <th>Creado</th>
+
+                <th width="280">Acciones</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="hydrometerTablesBody">
+        </tbody>
+
+    </table>
+
+</div>
+
+<!-- Entrega 2.8.0.2, sección 16 -- crear una versión nueva de la tabla,
+     siempre vía CSV (archivo subido o texto pegado, mismo endpoint
+     `/api/hydrometer/tables/import` para ambos casos -- ver
+     hydrometerConversionTables.js). Nunca activa automáticamente
+     (sección 16: "el sistema nunca debe activar la tabla
+     automáticamente después de importarla") -- queda en DRAFT, lista
+     para Validar/Revisar/Activar desde el detalle. -->
+<div class="modal fade" id="modalNewTable" tabindex="-1" aria-labelledby="modalNewTableTitle" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <form id="newTableForm">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title" id="modalNewTableTitle">Nueva tabla / versión</h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <input type="hidden" id="newTableParentTableId" name="parentTableId" value="">
+
+                    <div id="newTableParentNotice" class="alert alert-secondary small py-2 px-3 mb-3" style="display:none"></div>
+
+                    <div class="mb-3">
+
+                        <label for="newTableName" class="form-label">Nombre</label>
+
+                        <input type="text" id="newTableName" name="name" class="form-control" required placeholder="Ej. Brewer's Elite -- Tabla de fábrica">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="newTableManufacturer" class="form-label">Fabricante</label>
+
+                        <input type="text" id="newTableManufacturer" name="manufacturer" class="form-control">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="newTableSource" class="form-label">Origen / fuente</label>
+
+                        <input type="text" id="newTableSource" name="source" class="form-control" placeholder="Ej. Ficha técnica impresa del fabricante">
+
+                    </div>
+
+                    <div class="mb-3" id="newTableChangeReasonGroup" style="display:none">
+
+                        <label for="newTableChangeReason" class="form-label">Motivo del cambio</label>
+
+                        <textarea id="newTableChangeReason" name="changeReason" class="form-control" rows="2" placeholder="Por qué se reemplaza la versión anterior"></textarea>
+
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+
+                        <label for="newTableFile" class="form-label">Archivo CSV (encabezado SG,Brix,Alcohol)</label>
+
+                        <input type="file" id="newTableFile" accept=".csv,text/csv" class="form-control">
+
+                    </div>
+
+                    <p class="text-center text-muted small mb-2">-- o --</p>
+
+                    <div class="mb-3">
+
+                        <label for="newTableCsvText" class="form-label">Pegar filas CSV</label>
+
+                        <textarea id="newTableCsvText" class="form-control" rows="6" placeholder="SG,Brix,Alcohol&#10;1.000,0.0,0.0&#10;1.005,1.3,0.7"></textarea>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+                    <button type="submit" class="btn btn-success">Crear (DRAFT)</button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Sección 10/13 -- detalle: identificación, filas, errores de la
+     última validación y una simulación de conversión con esta versión
+     concreta (sirva o no esté ACTIVE todavía). -->
+<div class="modal fade" id="modalTableDetail" tabindex="-1" aria-labelledby="modalTableDetailTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalTableDetailTitle">Detalle de la tabla</h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div id="tableDetailSummary">
+                    <p class="text-muted mb-0">Cargando...</p>
+                </div>
+
+                <div id="tableDetailErrors" class="alert alert-danger small" style="display:none"></div>
+
+                <div class="d-flex gap-2 mb-3" id="tableDetailActions"></div>
+
+                <p class="fw-bold mb-2">Simular conversión con esta versión</p>
+
+                <div class="row g-2 align-items-end mb-2">
+
+                    <div class="col-4">
+
+                        <label class="form-label small mb-0">Escala</label>
+
+                        <select id="simulateScale" class="form-select form-select-sm">
+                            <option value="SG">SG</option>
+                            <option value="BRIX">Brix</option>
+                            <option value="ALCOHOL">% Alcohol</option>
+                        </select>
+
+                    </div>
+
+                    <div class="col-4">
+
+                        <label class="form-label small mb-0">Valor</label>
+
+                        <input type="number" step="any" id="simulateValue" class="form-control form-control-sm">
+
+                    </div>
+
+                    <div class="col-4">
+
+                        <button type="button" id="btnSimulate" class="btn btn-outline-primary btn-sm w-100">Simular</button>
+
+                    </div>
+
+                </div>
+
+                <div id="simulateResult" class="small mb-3"></div>
+
+                <p class="fw-bold mb-2">Filas (SG / Brix / % Alcohol)</p>
+
+                <div style="max-height: 320px; overflow-y: auto;">
+
+                    <table class="table table-sm table-bordered mb-0">
+
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>SG</th>
+                                <th>Brix</th>
+                                <th>% Alcohol</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tableDetailRowsBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="/js/api/api.js"></script>
+<script src="/js/ui/ui.js"></script>
+
+<script src="/js/hydrometer/hydrometerConversionTablesApi.js"></script>
+<script src="/js/hydrometer/hydrometerConversionTables.js"></script>

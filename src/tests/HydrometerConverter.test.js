@@ -274,6 +274,106 @@ test("fromSG(1.150) en el límite superior no lanza error", () => {
 
 });
 
+// --- Entrega 2.8.0.1 -- method (TABLE_EXACT/INTERPOLATED) y convert() ---
+
+test("fromSG(1.020) valor exacto -> method TABLE_EXACT (sección 3)", () => {
+
+    const result = HydrometerConverter.fromSG(1.020);
+
+    assert.strictEqual(result.method, "TABLE_EXACT");
+
+});
+
+test("fromSG(1.022) interpolado -> method INTERPOLATED (sección 4)", () => {
+
+    const result = HydrometerConverter.fromSG(1.022);
+
+    assert.strictEqual(result.method, "INTERPOLATED");
+
+});
+
+test("fromBrix() y fromAlcohol() también etiquetan method", () => {
+
+    assert.strictEqual(HydrometerConverter.fromBrix(6.3).method, "TABLE_EXACT");
+    assert.strictEqual(HydrometerConverter.fromBrix(5.7).method, "INTERPOLATED");
+    assert.strictEqual(HydrometerConverter.fromAlcohol(3.3).method, "TABLE_EXACT");
+    assert.strictEqual(HydrometerConverter.fromAlcohol(3.0).method, "INTERPOLATED");
+
+});
+
+test("convert({scale:'SG', value:1.022}) despacha a fromSG (sección 6)", () => {
+
+    const viaConvert = HydrometerConverter.convert({ scale: "SG", value: 1.022 });
+    const viaFromSg = HydrometerConverter.fromSG(1.022);
+
+    assert.deepStrictEqual(viaConvert, viaFromSg);
+
+});
+
+test("convert({scale:'BRIX', value:6.0}) despacha a fromBrix (sección 6, ejemplo literal)", () => {
+
+    const result = HydrometerConverter.convert({ scale: "BRIX", value: 6.0 });
+
+    assert.strictEqual(result.method, "INTERPOLATED");
+    assert.ok(result.sg > 1.020 && result.sg < 1.025);
+
+});
+
+test("convert({scale:'ALCOHOL', value:3.3}) despacha a fromAlcohol", () => {
+
+    const result = HydrometerConverter.convert({ scale: "ALCOHOL", value: 3.3 });
+
+    assert.strictEqual(result.sg, 1.025);
+    assert.strictEqual(result.method, "TABLE_EXACT");
+
+});
+
+test("convert() acepta la escala en minúsculas y con espacios", () => {
+
+    const result = HydrometerConverter.convert({ scale: " sg ", value: 1.020 });
+
+    assert.strictEqual(result.brix, 5.1);
+
+});
+
+test("convert() acepta value como string numérico (payload HTTP típico)", () => {
+
+    const result = HydrometerConverter.convert({ scale: "SG", value: "1.020" });
+
+    assert.strictEqual(result.brix, 5.1);
+
+});
+
+test("convert({scale:'BOGUS', value:1}) lanza error controlado", () => {
+
+    assert.throws(
+
+        () => HydrometerConverter.convert({ scale: "BOGUS", value: 1 }),
+
+        /scale debe ser una de/
+
+    );
+
+});
+
+test("convert({scale:'SG', value:99}) fuera de rango -- sin extrapolar (sección 12)", () => {
+
+    assert.throws(
+
+        () => HydrometerConverter.convert({ scale: "SG", value: 99 }),
+
+        /fuera del rango/
+
+    );
+
+});
+
+test("VALID_SCALES expone las tres escalas soportadas", () => {
+
+    assert.deepStrictEqual(HydrometerConverter.VALID_SCALES, ["SG", "BRIX", "ALCOHOL"]);
+
+});
+
 console.log(`\n${passed} pasaron, ${failed} fallaron.\n`);
 
 if (failed > 0) {

@@ -117,6 +117,48 @@ const ProductionMeasurement = sequelize.define("ProductionMeasurement", {
 
     },
 
+    // Entrega 2.8.0.1, sección 10 -- trazabilidad de la conversión
+    // automática del hidrómetro. Los tres campos quedan NULL en
+    // mediciones capturadas manualmente ANTES de esta entrega (nunca se
+    // backfillea "MANUAL" retroactivamente, sección 11) y también en
+    // mediciones nuevas capturadas manualmente (ver VALID_HYDROMETER_SCALES/
+    // buildValues() en ProductionMeasurementService).
+    hydrometerInputScale: {
+
+        type: DataTypes.STRING(20),
+
+        allowNull: true
+
+    },
+
+    hydrometerInputValue: {
+
+        type: DataTypes.DECIMAL(10, 4),
+
+        allowNull: true
+
+    },
+
+    hydrometerConversionMethod: {
+
+        type: DataTypes.STRING(20),
+
+        allowNull: true
+
+    },
+
+    // Entrega 2.8.0.2, sección 5 -- con qué VERSIÓN de tabla se calculó
+    // una conversión automática. NULL en mediciones manuales y en
+    // cualquier medición anterior a esta entrega (mismo criterio de
+    // "nunca backfillear", ver la migración que agrega esta columna).
+    hydrometerConversionTableId: {
+
+        type: DataTypes.INTEGER,
+
+        allowNull: true
+
+    },
+
     createdAt: {
 
         type: DataTypes.DATE,

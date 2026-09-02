@@ -47,6 +47,37 @@ function round(value, decimals) {
 
 }
 
+/*
+ * Entrega 2.7.0.9, sección 3 -- "ERROR MEDIANO" no existía en ningún
+ * módulo del proyecto hasta esta entrega. En vez de recalcularlo en la
+ * capa de consolidación (lo que exigiría volver a consultar/derivar
+ * `errorHoursList` fuera de este agregador, duplicando el flujo de
+ * `getMetrics()`), se agrega AQUÍ, en el único lugar que ya tiene esa
+ * lista en memoria -- mismo criterio aditivo que `minAbsoluteErrorHours`/
+ * `maxAbsoluteErrorHours` (2.6.1.27). `median()` se define localmente,
+ * mismo patrón de no-extracción ya establecido por
+ * `AlertTrendAnalysis.js` (2.7.0.8) y `RecalibrationProcessAnalysis.js`.
+ */
+function median(values) {
+
+    if (!values || values.length === 0) {
+
+        return null;
+
+    }
+
+    const sorted =
+        values.slice().sort((a, b) => a - b);
+
+    const mid =
+        Math.floor(sorted.length / 2);
+
+    return sorted.length % 2 !== 0
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+
+}
+
 class ModelAccuracyMetrics {
 
     /*
@@ -169,6 +200,10 @@ class ModelAccuracyMetrics {
         const maxAbsoluteErrorHours =
             round(absoluteErrorHoursList.length > 0 ? Math.max(...absoluteErrorHoursList) : null, 2);
 
+        // Entrega 2.7.0.9 -- aditivo, ver comentario de median() arriba.
+        const medianAbsoluteErrorHours =
+            round(median(absoluteErrorHoursList), 2);
+
         const errorStdDevHours =
             standardDeviation(errorHoursList);
 
@@ -210,6 +245,9 @@ class ModelAccuracyMetrics {
             minAbsoluteErrorHours,
 
             maxAbsoluteErrorHours,
+
+            // Entrega 2.7.0.9 -- aditivo, ver comentario de median() arriba.
+            medianAbsoluteErrorHours,
 
             errorStdDevHours,
 

@@ -10,6 +10,18 @@ const ProductionBatchRepository =
 const CarbonationCalculator =
     require("../utils/CarbonationCalculator");
 
+const HydrometerConverter =
+    require("../utils/HydrometerConverter");
+
+// Entrega 2.8.0.2, sección 18 -- reemplaza la llamada directa a
+// `HydrometerConverter.convert()` (2.8.0.1, tabla embebida en código)
+// por el servicio que resuelve la tabla ACTIVE en base de datos. El
+// comportamiento visible no cambia; `resolveHydrometerValues()` pasa de
+// síncrono a asíncrono porque ahora depende de una consulta a base de
+// datos (ver comentario ahí mismo).
+const HydrometerConversionService =
+    require("./HydrometerConversionService");
+
 const MaturationCalculator =
     require("../utils/MaturationCalculator");
 
@@ -26,6 +38,13 @@ const ProductionAlertActionService =
     require("./ProductionAlertActionService");
 
 const VALID_PHASES = ["F1", "F2", "FINAL"];
+
+// Entrega 2.8.0.1, sección 2 -- mismas tres escalas que
+// `HydrometerConverter.VALID_SCALES`, reexpuesto aquí solo para no
+// depender de que el frontend/tests conozcan la forma interna del
+// módulo puro (mismo criterio que `VALID_PHASES` de arriba).
+const VALID_HYDROMETER_SCALES =
+    HydrometerConverter.VALID_SCALES;
 
 class ProductionMeasurementService
     extends BaseService {
@@ -52,6 +71,9 @@ class ProductionMeasurementService
 
         this.alertActionService =
             new ProductionAlertActionService();
+
+        this.hydrometerConversionService =
+            new HydrometerConversionService();
 
     }
 
@@ -82,6 +104,41 @@ class ProductionMeasurementService
             );
 
         }
+
+        // Entrega 2.8.0.3, sección 12 -- "Rechazar: SG negativo, Brix
+        // negativo, Alcohol negativo, valores no numéricos". Antes de
+        // esta entrega, un valor no numérico (ej. una cadena que no
+        // parsea) pasaba de largo silenciosamente -- `NaN < 0` es
+        // `false`, así que las comparaciones de abajo nunca lo
+        // atrapaban, y el valor crudo terminaba persistido tal cual.
+        // `requireFiniteIfPresent()` cierra ese hueco para los seis
+        // campos numéricos de esta entidad, sin cambiar ningún límite
+        // ya existente (sigue siendo válido omitir cualquiera de estos
+        // campos por completo -- mediciones parciales, ej. una lectura
+        // de solo pH, siguen permitidas, sección 13 "conservar
+        // completamente mediciones existentes").
+        const requireFiniteIfPresent = (value, fieldName) => {
+
+            if (value === undefined || value === null || value === "") {
+
+                return;
+
+            }
+
+            if (!Number.isFinite(Number(value))) {
+
+                throw new Error(`${fieldName} debe ser un número.`);
+
+            }
+
+        };
+
+        requireFiniteIfPresent(data.ph, "ph");
+        requireFiniteIfPresent(data.brix, "brix");
+        requireFiniteIfPresent(data.brixLafmate, "brixLafmate");
+        requireFiniteIfPresent(data.specificGravity, "specificGravity");
+        requireFiniteIfPresent(data.estimatedAlcohol, "estimatedAlcohol");
+        requireFiniteIfPresent(data.psi, "psi");
 
         if (data.ph !== undefined && data.ph !== null) {
 
@@ -123,11 +180,62 @@ class ProductionMeasurementService
 
         }
 
+        // Entrega 2.8.0.3, sección 12 -- "Alcohol negativo" faltaba por
+        // completo antes de esta entrega (specificGravity/brix/psi ya
+        // se validaban, estimatedAlcohol nunca).
+        if (data.estimatedAlcohol !== undefined && data.estimatedAlcohol !== null) {
+
+            if (data.estimatedAlcohol < 0) {
+
+                throw new Error("estimatedAlcohol debe ser mayor o igual a 0.");
+
+            }
+
+        }
+
         if (data.psi !== undefined && data.psi !== null) {
 
             if (data.psi < 0) {
 
                 throw new Error("psi debe ser mayor o igual a 0.");
+
+            }
+
+        }
+
+        // Entrega 2.8.0.1, sección 2/6 -- modo automático: si el
+        // operador eligió "calcular valores a partir de una lectura",
+        // `hydrometerInputScale` debe ser una escala válida y
+        // `hydrometerInputValue` debe venir presente y ser numérico. La
+        // conversión en sí (incluyendo el rechazo de valores fuera de
+        // rango, sección 12) ocurre en `buildValues()` -- aquí solo se
+        // valida la FORMA de la solicitud, para fallar rápido antes de
+        // tocar la base de datos.
+        if (data.hydrometerInputScale !== undefined && data.hydrometerInputScale !== null && data.hydrometerInputScale !== "") {
+
+            const scale =
+                String(data.hydrometerInputScale).trim().toUpperCase();
+
+            if (!VALID_HYDROMETER_SCALES.includes(scale)) {
+
+                throw new Error(
+
+                    `hydrometerInputScale debe ser una de: ${VALID_HYDROMETER_SCALES.join(", ")}.`
+
+                );
+
+            }
+
+            const value =
+                Number(data.hydrometerInputValue);
+
+            if (data.hydrometerInputValue === undefined || data.hydrometerInputValue === null || data.hydrometerInputValue === "" || Number.isNaN(value)) {
+
+                throw new Error(
+
+                    "hydrometerInputValue debe ser un número cuando se especifica hydrometerInputScale."
+
+                );
 
             }
 
@@ -180,7 +288,99 @@ class ProductionMeasurementService
 
     }
 
-    buildValues(data) {
+    /*
+     * Entrega 2.8.0.1, secciones 2/6/10 -- resuelve SG/Brix/Alcohol y
+     * su trazabilidad. Cuando el operador NO pidió conversión
+     * automática (`hydrometerInputScale` ausente), el comportamiento es
+     * EXACTAMENTE el de antes de esta entrega: los tres valores se
+     * guardan tal como llegaron (sección 2, "esto conserva el
+     * comportamiento actual"), y `hydrometerConversionMethod` queda
+     * "MANUAL" solo si el operador de verdad capturó al menos uno de
+     * los tres (nunca se etiqueta "MANUAL" a una fila F2 que ni
+     * siquiera muestra estos campos).
+     *
+     * Cuando SÍ pidió conversión automática, el servidor NUNCA confía
+     * en los valores de `specificGravity`/`brix`/`estimatedAlcohol` que
+     * el cliente haya podido enviar -- siempre recalcula desde cero con
+     * `HydrometerConversionService` (la MISMA fuente de verdad que
+     * `POST /api/hydrometer/convert`, nunca una segunda copia de la
+     * lógica de interpolación), igual que `calculateCo2Volumes()` de
+     * abajo nunca confía en un `co2Volumes` recibido del cliente. Fuera
+     * de rango (sección 12 de 2.8.0.1) se propaga tal cual -- error
+     * controlado, nunca una extrapolación silenciosa.
+     *
+     * Entrega 2.8.0.2, sección 5 -- además de los tres campos de
+     * trazabilidad de 2.8.0.1, ahora también resuelve
+     * `hydrometerConversionTableId`: CON qué versión de tabla se
+     * calculó. `HydrometerConversionService.convert()` ahora consulta
+     * la tabla ACTIVE en base de datos, así que este método pasa a ser
+     * asíncrono (antes llamaba a un módulo puro en memoria).
+     */
+    async resolveHydrometerValues(data) {
+
+        const rawScale =
+            data.hydrometerInputScale;
+
+        const hasAutoRequest =
+            rawScale !== undefined && rawScale !== null && rawScale !== "";
+
+        if (!hasAutoRequest) {
+
+            const hasManualReading =
+                data.specificGravity !== undefined && data.specificGravity !== null ||
+                data.brix !== undefined && data.brix !== null ||
+                data.estimatedAlcohol !== undefined && data.estimatedAlcohol !== null;
+
+            return {
+
+                specificGravity: data.specificGravity ?? null,
+
+                brix: data.brix ?? null,
+
+                estimatedAlcohol: data.estimatedAlcohol ?? null,
+
+                hydrometerInputScale: null,
+
+                hydrometerInputValue: null,
+
+                hydrometerConversionMethod: hasManualReading ? "MANUAL" : null,
+
+                hydrometerConversionTableId: null
+
+            };
+
+        }
+
+        const scale =
+            String(rawScale).trim().toUpperCase();
+
+        const value =
+            Number(data.hydrometerInputValue);
+
+        const converted =
+            await this.hydrometerConversionService.convert({ scale, value });
+
+        return {
+
+            specificGravity: converted.result.sg,
+
+            brix: converted.result.brix,
+
+            estimatedAlcohol: converted.result.alcohol,
+
+            hydrometerInputScale: scale,
+
+            hydrometerInputValue: value,
+
+            hydrometerConversionMethod: converted.method,
+
+            hydrometerConversionTableId: converted.tableId
+
+        };
+
+    }
+
+    async buildValues(data) {
 
         const isF2 =
             data.phase === "F2";
@@ -202,6 +402,9 @@ class ProductionMeasurementService
 
             );
 
+        const hydrometer =
+            await this.resolveHydrometerValues(data);
+
         return {
 
             measurementDate: data.measurementDate,
@@ -210,13 +413,16 @@ class ProductionMeasurementService
 
             ph: data.ph ?? null,
 
-            brix: data.brix ?? null,
+            brix: hydrometer.brix,
 
+            // Sección 9 -- el Brix del refractómetro BrixMate/LAFmate es
+            // una medición DISTINTA e independiente; nunca se toca ni se
+            // deriva de la conversión del hidrómetro.
             brixLafmate: data.brixLafmate ?? null,
 
-            specificGravity: data.specificGravity ?? null,
+            specificGravity: hydrometer.specificGravity,
 
-            estimatedAlcohol: data.estimatedAlcohol ?? null,
+            estimatedAlcohol: hydrometer.estimatedAlcohol,
 
             liquidTemperature: data.liquidTemperature ?? null,
 
@@ -226,7 +432,15 @@ class ProductionMeasurementService
 
             co2Volumes,
 
-            notes: data.notes ?? null
+            notes: data.notes ?? null,
+
+            hydrometerInputScale: hydrometer.hydrometerInputScale,
+
+            hydrometerInputValue: hydrometer.hydrometerInputValue,
+
+            hydrometerConversionMethod: hydrometer.hydrometerConversionMethod,
+
+            hydrometerConversionTableId: hydrometer.hydrometerConversionTableId
 
         };
 
@@ -424,7 +638,7 @@ class ProductionMeasurementService
 
                 productionBatchId: batchId,
 
-                ...this.buildValues(data)
+                ...(await this.buildValues(data))
 
             });
 
@@ -558,7 +772,7 @@ class ProductionMeasurementService
 
             id,
 
-            this.buildValues(data)
+            await this.buildValues(data)
 
         );
 

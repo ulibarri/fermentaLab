@@ -63,9 +63,9 @@ class MeasurementsPage extends CrudPage {
 
                         field: "specificGravity",
 
-                        formatter: value =>
+                        formatter: (value, item) =>
 
-                            value ?? "—"
+                            this.hydrometerCellHtml(value, item, "SG")
 
                     },
 
@@ -73,9 +73,9 @@ class MeasurementsPage extends CrudPage {
 
                         field: "estimatedAlcohol",
 
-                        formatter: value =>
+                        formatter: (value, item) =>
 
-                            value ?? "—"
+                            this.hydrometerCellHtml(value, item, "ALCOHOL")
 
                     },
 
@@ -83,9 +83,9 @@ class MeasurementsPage extends CrudPage {
 
                         field: "brix",
 
-                        formatter: value =>
+                        formatter: (value, item) =>
 
-                            value ?? "—"
+                            this.hydrometerCellHtml(value, item, "BRIX")
 
                     },
 
@@ -324,6 +324,8 @@ class MeasurementsPage extends CrudPage {
 
             this.items = items;
 
+            await this.loadHydrometerTableLabels();
+
             this.table.render(
 
                 items,
@@ -384,6 +386,83 @@ class MeasurementsPage extends CrudPage {
         }
 
         this.form.openEdit(measurement);
+
+    }
+
+    /*
+     * Entrega 2.8.0.3, sección 6/8 -- resuelve id de tabla -> "nombre
+     * vN" para TODAS las tablas existentes de una sola vez (en vez de
+     * una consulta por fila del historial), usado por
+     * `hydrometerCellHtml()` de abajo. Falla en silencio -- puramente
+     * informativo, nunca bloquea la carga del historial de mediciones
+     * si la API de tablas no responde.
+     */
+    async loadHydrometerTableLabels() {
+
+        this._hydrometerTableLabels = {};
+
+        try {
+
+            const response =
+                await Api.get("/api/hydrometer/tables");
+
+            (response.data || []).forEach(table => {
+
+                this._hydrometerTableLabels[table.id] =
+                    `${table.name} v${table.version}`;
+
+            });
+
+        } catch (err) {
+
+            // Puramente informativo -- ver comentario de arriba.
+
+        }
+
+    }
+
+    /*
+     * Entrega 2.8.0.3, sección 6/8 -- "5.6 °Bx ⓘ Estimado" en el
+     * historial cronológico: distingue, celda por celda, la lectura que
+     * el operador realmente tecleó (sin indicador, es un dato medido)
+     * de los otros dos valores derivados por conversión (con indicador
+     * y tooltip -- "Calculado a partir de: SG 1.022 · Método:
+     * Interpolación lineal · Tabla: Brewer's Elite v1"). Mediciones
+     * manuales (hydrometerConversionMethod null o "MANUAL") nunca
+     * muestran el indicador -- son lecturas directas, no estimaciones.
+     */
+    hydrometerCellHtml(value, item, fieldScale) {
+
+        const formatted =
+            this.formatValue(value);
+
+        if (!item.hydrometerConversionMethod || item.hydrometerConversionMethod === "MANUAL") {
+
+            return formatted;
+
+        }
+
+        if (item.hydrometerInputScale === fieldScale) {
+
+            // Esta es la escala que el operador realmente tecleó -- un
+            // dato medido, no una estimación, aunque la medición en
+            // conjunto haya usado conversión automática.
+            return formatted;
+
+        }
+
+        const tableLabel =
+            (this._hydrometerTableLabels || {})[item.hydrometerConversionTableId] || null;
+
+        const methodLabel =
+            item.hydrometerConversionMethod === "TABLE_EXACT"
+                ? "Tabla del fabricante (valor exacto)"
+                : "Interpolación lineal";
+
+        const title =
+            `Calculado a partir de: ${item.hydrometerInputScale} ${item.hydrometerInputValue} · Método: ${methodLabel} · Tabla: ${tableLabel || "—"}`;
+
+        return `${formatted} <span class="badge bg-info text-dark" title='${title}' style="cursor:help;">ⓘ Estimado</span>`;
 
     }
 

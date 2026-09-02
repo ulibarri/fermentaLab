@@ -7,6 +7,7 @@ const IngredientSeeder = require("./IngredientSeeder");
 const RecipeSeeder = require("./RecipeSeeder");
 const RecipeVersionSeeder = require("./RecipeVersionSeeder");
 const RecipeIngredientSeeder = require("./RecipeIngredientSeeder");
+const HydrometerConversionTableSeeder = require("./HydrometerConversionTableSeeder");
 
 async function run() {
 
@@ -67,6 +68,19 @@ async function run() {
         ).run();
 
         await new RecipeIngredientSeeder(
+
+            context,
+
+            transaction
+
+        ).run();
+
+        // Entrega 2.8.0.2 -- no depende de `context` (no referencia
+        // categorías/productos/recetas), pero se corre en el mismo
+        // batch/transacción que el resto del seed inicial para que una
+        // base de datos recién migrada quede lista para operar en un
+        // solo paso.
+        await new HydrometerConversionTableSeeder(
 
             context,
 

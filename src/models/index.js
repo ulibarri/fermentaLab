@@ -20,6 +20,9 @@ const RecalibrationProposalEvaluation = require("./RecalibrationProposalEvaluati
 const RecalibrationEffectivenessEvaluation = require("./RecalibrationEffectivenessEvaluation");
 const ProductionPredictionAlert = require("./ProductionPredictionAlert");
 const ProductionAlertAction = require("./ProductionAlertAction");
+const HydrometerConversionTable = require("./HydrometerConversionTable");
+const HydrometerConversionTableRow = require("./HydrometerConversionTableRow");
+const HydrometerTableAuditLog = require("./HydrometerTableAuditLog");
 
 Category.hasMany(Product, {
 
@@ -712,6 +715,129 @@ ProductionAlertAction.belongsTo(
 
 );
 
+// --- Entrega 2.8.0.2: HydrometerConversionTable --------------------
+
+HydrometerConversionTable.hasMany(
+
+    HydrometerConversionTableRow,
+
+    {
+
+        foreignKey: "hydrometerConversionTableId",
+
+        as: "rows"
+
+    }
+
+);
+
+HydrometerConversionTableRow.belongsTo(
+
+    HydrometerConversionTable,
+
+    {
+
+        foreignKey: "hydrometerConversionTableId",
+
+        as: "table"
+
+    }
+
+);
+
+// Cadena de versiones (self-referencial), mismo patrón que
+// MaturationModelCalibration.parentCalibration (2.6.1.19).
+
+HydrometerConversionTable.belongsTo(
+
+    HydrometerConversionTable,
+
+    {
+
+        foreignKey: "parentTableId",
+
+        as: "parentTable"
+
+    }
+
+);
+
+HydrometerConversionTable.hasMany(
+
+    HydrometerConversionTable,
+
+    {
+
+        foreignKey: "parentTableId",
+
+        as: "childTables"
+
+    }
+
+);
+
+// Solo `belongsTo` en un sentido -- mismo criterio que
+// MaturationAlertAuditLog (2.6.1.23): no hay pantalla que recorra "las
+// tablas -> sus logs de auditoría" todavía, solo se escribe.
+
+HydrometerTableAuditLog.belongsTo(
+
+    HydrometerConversionTable,
+
+    {
+
+        foreignKey: "tableId",
+
+        as: "table"
+
+    }
+
+);
+
+HydrometerTableAuditLog.belongsTo(
+
+    HydrometerConversionTable,
+
+    {
+
+        foreignKey: "previousTableId",
+
+        as: "previousTable"
+
+    }
+
+);
+
+// Sección 5 -- de qué tabla se tomó una conversión automática.
+
+HydrometerConversionTable.hasMany(
+
+    ProductionMeasurement,
+
+    {
+
+        foreignKey: "hydrometerConversionTableId",
+
+        as: "measurements"
+
+    }
+
+);
+
+ProductionMeasurement.belongsTo(
+
+    HydrometerConversionTable,
+
+    {
+
+        foreignKey: "hydrometerConversionTableId",
+
+        as: "hydrometerConversionTable"
+
+    }
+
+);
+
 module.exports = {
 
     sequelize,
@@ -754,5 +880,11 @@ module.exports = {
 
     ProductionPredictionAlert,
 
-    ProductionAlertAction
+    ProductionAlertAction,
+
+    HydrometerConversionTable,
+
+    HydrometerConversionTableRow,
+
+    HydrometerTableAuditLog
 };

@@ -175,6 +175,68 @@ test("summarizeModelAccuracy: reproduce el ejemplo LINEAR de la sección 8 (N=18
 
 });
 
+// --- Entrega 2.7.0.9 -- medianAbsoluteErrorHours (aditivo) ---
+
+test("summarizeModelAccuracy: medianAbsoluteErrorHours con N impar = valor central", () => {
+
+    // |errorHours| = [1, 2, 3, 4, 400] -> mediana = 3
+    const evaluations = [
+
+        { errorHours: 1, direction: "EARLY" },
+
+        { errorHours: -2, direction: "LATE" },
+
+        { errorHours: 3, direction: "EARLY" },
+
+        { errorHours: -4, direction: "LATE" },
+
+        { errorHours: 400, direction: "EARLY" }
+
+    ];
+
+    const summary =
+        ModelAccuracyMetrics.summarizeModelAccuracy("LINEAR", evaluations);
+
+    assert.strictEqual(summary.medianAbsoluteErrorHours, 3);
+
+    // La mediana no se deja arrastrar por el outlier de 400h, a
+    // diferencia del MAE (que sí lo refleja) -- exactamente la razón por
+    // la que la sección 3 del spec pide ambos números por separado.
+    assert.ok(summary.maeHours > summary.medianAbsoluteErrorHours);
+
+});
+
+test("summarizeModelAccuracy: medianAbsoluteErrorHours con N par = promedio de los dos centrales", () => {
+
+    // |errorHours| = [1, 2, 3, 4] -> mediana = (2+3)/2 = 2.5
+    const evaluations = [
+
+        { errorHours: 1, direction: "EARLY" },
+
+        { errorHours: -2, direction: "LATE" },
+
+        { errorHours: 3, direction: "EARLY" },
+
+        { errorHours: -4, direction: "LATE" }
+
+    ];
+
+    const summary =
+        ModelAccuracyMetrics.summarizeModelAccuracy("EXPONENTIAL", evaluations);
+
+    assert.strictEqual(summary.medianAbsoluteErrorHours, 2.5);
+
+});
+
+test("summarizeModelAccuracy: N=0 -> medianAbsoluteErrorHours también null", () => {
+
+    const summary =
+        ModelAccuracyMetrics.summarizeModelAccuracy("LINEAR", []);
+
+    assert.strictEqual(summary.medianAbsoluteErrorHours, null);
+
+});
+
 test("summarizeModelAccuracy: N=0 -> métricas null, LOW_SAMPLE, nunca NaN/Infinity", () => {
 
     const summary =

@@ -10,6 +10,7 @@ const fermentationRoutes = require("./fermentations");
 const operationalActionRoutes = require("./operationalActions");
 const predictionAlertTrendRoutes = require("./predictionAlertTrends");
 const operationalReportRoutes = require("./operationalReport");
+const hydrometerConversionTableRoutes = require("./hydrometerConversionTables");
 
 // Dashboard
 router.get("/", dashboardController.index);
@@ -34,5 +35,9 @@ router.use("/prediction-alerts/trends", predictionAlertTrendRoutes);
 
 // Entrega 2.7.0.9 -- reporte consolidado predictivo-operativo.
 router.use("/operational-report", operationalReportRoutes);
+
+// Entrega 2.8.0.2 -- administración de la tabla de conversión del
+// fabricante ("Configuración → Hidrómetros → Tabla de conversión").
+router.use("/hydrometer/conversion-tables", hydrometerConversionTableRoutes);
 
 module.exports = router;
