@@ -218,6 +218,30 @@
 
     </div>
 
+    <!-- Entrega 2.8.0.5 -- "Análisis histórico del error y detección de
+         sesgo del hidrómetro". A diferencia de la tarjeta de arriba
+         (comparaciones INDIVIDUALES de ESTE lote, 2.8.0.4), esta
+         sección agrega estadísticamente TODAS las comparaciones
+         válidas del sistema (cross-batch) contra
+         `GET /api/hydrometer/audit` -- la pregunta que responde es
+         "¿la tabla del fabricante tiende sistemáticamente a sobre o
+         subestimar?", que solo tiene sentido evaluada con datos de
+         varios lotes, no de uno solo. Solo detecta el sesgo, nunca lo
+         corrige (sección 2). -->
+    <div class="card mb-4">
+
+        <div class="card-header">
+            Análisis histórico del hidrómetro
+        </div>
+
+        <div class="card-body" id="hydrometerHistoricalAnalysis">
+
+            <p class="text-muted mb-0">Cargando...</p>
+
+        </div>
+
+    </div>
+
     <h5 class="mb-3">Historial cronológico</h5>
 
     <table id="tblMeasurements" class="table table-striped table-hover">
@@ -285,6 +309,7 @@
     <script src="/js/batches/predictionApi.js"></script>
     <script src="/js/batches/measurementForm.js"></script>
     <script src="/js/batches/maturationChart.js"></script>
+    <script src="/js/batches/hydrometerBiasChart.js"></script>
     <script src="/js/batches/measurements.js"></script>
 
     <script>

@@ -369,6 +369,8 @@ class MeasurementsPage extends CrudPage {
 
             await this.renderHydrometerAudit();
 
+            await this.renderHydrometerHistoricalAnalysis();
+
         }
 
         catch (err) {
@@ -2965,6 +2967,335 @@ class MeasurementsPage extends CrudPage {
             </ul>
 
         `;
+
+    }
+
+    /*
+     * Entrega 2.8.0.5 -- "Análisis histórico del hidrómetro" (sección
+     * 14). A diferencia de `renderHydrometerAudit()` (2.8.0.4,
+     * comparaciones de ESTE lote vía `GET /api/batches/:id/hydrometer/audit`),
+     * esto consulta el endpoint GLOBAL `GET /api/hydrometer/audit`
+     * (sin `batchId`) -- deliberado: la pregunta "¿la tabla tiende a
+     * sobre/subestimar?" es sobre la tabla del fabricante en general,
+     * no sobre un lote en particular, y rara vez un solo lote aporta
+     * suficientes comparaciones para superar el umbral mínimo de
+     * muestra (sección 12). Por eso se llama directamente `Api.get()`
+     * en vez de `this.api` (MeasurementApi es siempre por-lote) --
+     * mismo patrón ya usado por `loadHydrometerTableLabels()` arriba
+     * para `/api/hydrometer/tables`.
+     */
+    async renderHydrometerHistoricalAnalysis() {
+
+        const container =
+            document.getElementById("hydrometerHistoricalAnalysis");
+
+        if (!container)
+            return;
+
+        try {
+
+            const response =
+                await Api.get("/api/hydrometer/audit");
+
+            this.hydrometerHistoricalAnalysis =
+                response.data;
+
+            this.renderHydrometerHistoricalAnalysisBlock(response.data);
+
+        }
+
+        catch (err) {
+
+            container.innerHTML =
+                `<p class="text-danger mb-0">No fue posible obtener el análisis histórico: ${err.message}</p>`;
+
+        }
+
+    }
+
+    /*
+     * Sección 13 -- ⚪/🟢/🟡/🔴, tal como ya lo clasificó el backend
+     * (`HydrometerBiasAnalysis.classifyBiasStatus()`) -- este archivo
+     * nunca decide el estado, solo lo traduce a texto/emoji.
+     */
+    hydrometerBiasStatusMeta(status) {
+
+        const meta = {
+
+            INSUFFICIENT: { emoji: "⚪", label: "Insuficiente" },
+
+            NO_EVIDENT_BIAS: { emoji: "🟢", label: "Sin sesgo evidente" },
+
+            POSSIBLE_BIAS: { emoji: "🟡", label: "Posible sesgo" },
+
+            CONSISTENT_BIAS: { emoji: "🔴", label: "Sesgo consistente" }
+
+        };
+
+        return meta[status] || { emoji: "⚪", label: status || "—" };
+
+    }
+
+    /*
+     * Sección 11 -- barra de tendencia + texto explicativo, con el
+     * cuidado explícito del spec de nunca afirmar "el hidrómetro está
+     * mal calibrado" -- solo describe la diferencia sistemática
+     * observada frente al BrixMate en el conjunto analizado.
+     */
+    hydrometerTrendBlockHtml(analysis) {
+
+        const { sampleCount, positiveErrors, negativeErrors } =
+            analysis;
+
+        if (sampleCount === 0) {
+
+            return "";
+
+        }
+
+        const dominant =
+            positiveErrors >= negativeErrors ? "positive" : "negative";
+
+        const dominantCount =
+            dominant === "positive" ? positiveErrors : negativeErrors;
+
+        const dominantLabel =
+            dominant === "positive" ? "SOBREESTIMACIÓN" : "SUBESTIMACIÓN";
+
+        const dominantComparisonWord =
+            dominant === "positive" ? "superior" : "inferior";
+
+        const barColor =
+            dominant === "positive" ? "bg-danger" : "bg-primary";
+
+        const percentage =
+            Math.round((dominantCount / sampleCount) * 100);
+
+        return `
+
+            <p class="fw-bold mb-1 mt-3">Tendencia</p>
+
+            <div class="progress mb-2" style="height: 1.5rem;">
+                <div class="progress-bar ${barColor}" role="progressbar" style="width: ${percentage}%">${dominantLabel}</div>
+            </div>
+
+            <p class="text-muted small mb-0">
+                ${dominantCount} de ${sampleCount} comparaciones presentan Brix derivado ${dominantComparisonWord} al BrixMate.
+                La evidencia solamente demuestra una diferencia sistemática respecto al BrixMate en el conjunto analizado -- no implica que el hidrómetro esté mal calibrado.
+            </p>
+
+        `;
+
+    }
+
+    hydrometerRangeTableHtml(ranges) {
+
+        if (!ranges || ranges.length === 0) {
+
+            return "";
+
+        }
+
+        const rows =
+            ranges
+
+                .map(r => `
+
+                    <tr>
+                        <td>${r.range} °Bx</td>
+                        <td>${r.count}</td>
+                        <td>${r.bias === null ? "—" : (r.bias > 0 ? "+" : "") + r.bias}</td>
+                        <td>${r.mae === null ? "—" : r.mae}</td>
+                    </tr>
+
+                `)
+
+                .join("");
+
+        return `
+
+            <p class="fw-bold mb-1 mt-3">Análisis por rango de Brix</p>
+
+            <table class="table table-sm table-bordered mb-0">
+                <thead><tr><th>Rango</th><th>n</th><th>Bias</th><th>MAE</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+
+        `;
+
+    }
+
+    hydrometerPhaseTableHtml(byPhase) {
+
+        if (!byPhase || byPhase.length === 0) {
+
+            return "";
+
+        }
+
+        const phaseLabels =
+            { F1: "F1", FINAL: "Producto Final" };
+
+        const rows =
+            byPhase
+
+                .map(p => `
+
+                    <tr>
+                        <td>${phaseLabels[p.phase] || p.phase}</td>
+                        <td>${p.count}</td>
+                        <td>${p.bias > 0 ? "+" : ""}${p.bias}</td>
+                        <td>${p.mae}</td>
+                    </tr>
+
+                `)
+
+                .join("");
+
+        return `
+
+            <p class="fw-bold mb-1 mt-3">Análisis por fase</p>
+
+            <table class="table table-sm table-bordered mb-0">
+                <thead><tr><th>Fase</th><th>n</th><th>Bias</th><th>MAE</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+
+        `;
+
+    }
+
+    /*
+     * Sección 9 -- permite ver si una versión más nueva de la tabla
+     * representa mejor las mediciones reales, sin que el sistema elija
+     * ninguna automáticamente (sección 2, "no incluye recalibración
+     * automática").
+     */
+    hydrometerTableGroupTableHtml(byTable) {
+
+        if (!byTable || byTable.length === 0) {
+
+            return "";
+
+        }
+
+        const rows =
+            byTable
+
+                .map(t => `
+
+                    <tr>
+                        <td>${t.tableName || "—"}</td>
+                        <td>v${this.formatValue(t.tableVersion)}</td>
+                        <td>${t.count}</td>
+                        <td>${t.bias > 0 ? "+" : ""}${t.bias}</td>
+                        <td>${t.mae}</td>
+                    </tr>
+
+                `)
+
+                .join("");
+
+        return `
+
+            <p class="fw-bold mb-1 mt-3">Análisis por tabla / versión</p>
+
+            <table class="table table-sm table-bordered mb-0">
+                <thead><tr><th>Tabla</th><th>Versión</th><th>n</th><th>Bias</th><th>MAE</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+
+        `;
+
+    }
+
+    renderHydrometerHistoricalAnalysisBlock(analysis) {
+
+        const container =
+            document.getElementById("hydrometerHistoricalAnalysis");
+
+        if (!container)
+            return;
+
+        const statusMeta =
+            this.hydrometerBiasStatusMeta(analysis.status);
+
+        if (analysis.status === "INSUFFICIENT") {
+
+            container.innerHTML = `
+
+                <p class="mb-2">${statusMeta.emoji} <strong>${statusMeta.label}</strong></p>
+
+                <p class="text-muted mb-0">Datos insuficientes para determinar sesgo (${analysis.sampleCount} de ${analysis.minimumSampleSize} comparaciones mínimas requeridas).</p>
+
+            `;
+
+            const canvas =
+                document.getElementById("hydrometerBiasChart");
+
+            if (canvas) {
+
+                canvas.style.display = "none";
+
+            }
+
+            return;
+
+        }
+
+        const biasSign =
+            analysis.bias > 0 ? "+" : "";
+
+        const medianSign =
+            analysis.medianError > 0 ? "+" : "";
+
+        container.innerHTML = `
+
+            <p class="mb-2">${statusMeta.emoji} <strong>${statusMeta.label}</strong></p>
+
+            <ul class="list-unstyled small mb-0">
+
+                <li><strong>Comparaciones:</strong> ${analysis.sampleCount}</li>
+
+                <li><strong>Bias:</strong> ${biasSign}${analysis.bias} °Bx</li>
+
+                <li><strong>Mediana:</strong> ${medianSign}${analysis.medianError} °Bx</li>
+
+                <li><strong>Error absoluto medio:</strong> ${analysis.mae} °Bx</li>
+
+                <li><strong>Desviación estándar:</strong> ${analysis.standardDeviation} °Bx</li>
+
+                <li><strong>Error máximo (sobreestimación):</strong> ${analysis.maxPositiveError === null ? "—" : `+${analysis.maxPositiveError}`} °Bx</li>
+
+                <li><strong>Error máximo (subestimación):</strong> ${this.formatValue(analysis.maxNegativeError)} °Bx</li>
+
+            </ul>
+
+            ${this.hydrometerTrendBlockHtml(analysis)}
+
+            <p class="small mb-3">
+                ${analysis.positiveErrors} sobreestimaciones · ${analysis.zeroErrors} coincidencias · ${analysis.negativeErrors} subestimaciones
+            </p>
+
+            <p class="fw-bold mb-1 mt-3">Evolución del error</p>
+
+            <canvas id="hydrometerBiasChart" height="90"></canvas>
+
+            ${this.hydrometerRangeTableHtml(analysis.ranges)}
+
+            ${this.hydrometerPhaseTableHtml(analysis.byPhase)}
+
+            ${this.hydrometerTableGroupTableHtml(analysis.byTable)}
+
+        `;
+
+        HydrometerBiasChart.render({
+
+            canvasId: "hydrometerBiasChart",
+
+            timeline: analysis.timeline
+
+        });
 
     }
 

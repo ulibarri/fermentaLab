@@ -1,3 +1,6 @@
+const { Op } =
+    require("sequelize");
+
 const SequelizeRepository =
     require("./SequelizeRepository");
 
@@ -56,6 +59,70 @@ class ProductionMeasurementRepository
                 ["measurementDate", "DESC"],
 
                 ["id", "DESC"]
+
+            ]
+
+        });
+
+    }
+
+    /*
+     * Entrega 2.8.0.5, sección 10 -- `GET /api/hydrometer/audit` (a
+     * diferencia de `findByBatch()`, esta consulta NO está limitada a
+     * un lote: es la base del análisis histórico cross-batch). Todos
+     * los filtros son opcionales y de columnas planas (sin joins) --
+     * `tableVersion` deliberadamente NO se filtra aquí, porque el
+     * modelo solo guarda `hydrometerConversionTableId` (la versión se
+     * resuelve consultando `HydrometerConversionTable`, ver
+     * `HydrometerAuditService.getHistoricalAnalysis()`).
+     */
+    async findForAudit({ phase, batchId, tableId, from, to } = {}) {
+
+        const where = {};
+
+        if (phase) {
+
+            where.phase = phase;
+
+        }
+
+        if (batchId) {
+
+            where.productionBatchId = batchId;
+
+        }
+
+        if (tableId) {
+
+            where.hydrometerConversionTableId = tableId;
+
+        }
+
+        if (from || to) {
+
+            where.measurementDate = {};
+
+            if (from) {
+
+                where.measurementDate[Op.gte] = from;
+
+            }
+
+            if (to) {
+
+                where.measurementDate[Op.lte] = to;
+
+            }
+
+        }
+
+        return await this.model.findAll({
+
+            where,
+
+            order: [
+
+                ["measurementDate", "ASC"]
 
             ]
 

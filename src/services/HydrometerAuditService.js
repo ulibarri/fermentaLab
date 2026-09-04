@@ -1,6 +1,9 @@
 const HydrometerAudit =
     require("../utils/HydrometerAudit");
 
+const HydrometerBiasAnalysis =
+    require("../utils/HydrometerBiasAnalysis");
+
 const ProductionMeasurementRepository =
     require("../repositories/ProductionMeasurementRepository");
 
@@ -9,6 +12,14 @@ const ProductionBatchRepository =
 
 const HydrometerConversionTableRepository =
     require("../repositories/HydrometerConversionTableRepository");
+
+// Entrega 2.8.0.5, sección 12 -- mismo patrón EXACTO que
+// `ModelAccuracyMetricsService._parseDate()` (2.6.1.14): una fecha
+// "solo fecha" (sin hora) en `to` se trata inclusive hasta el final de
+// ESE día, para que un filtro "hasta el 31/07" no pierda mediciones
+// registradas esa misma tarde.
+const DATE_ONLY_PATTERN =
+    /^\d{4}-\d{2}-\d{2}$/;
 
 /*
  * Entrega 2.8.0.4 -- "Auditoría y comparación: mediciones
@@ -271,6 +282,164 @@ class HydrometerAuditService {
                 count: notComparable.length,
 
                 items: notComparable
+
+            }
+
+        };
+
+    }
+
+    _parseDate(value, { endOfDay = false } = {}) {
+
+        if (!value) {
+
+            return null;
+
+        }
+
+        const isDateOnly =
+            DATE_ONLY_PATTERN.test(value);
+
+        const date =
+            new Date(isDateOnly && endOfDay ? `${value}T23:59:59.999Z` : value);
+
+        return Number.isNaN(date.getTime()) ? null : date;
+
+    }
+
+    /*
+     * Entrega 2.8.0.5, sección 4/6/7/8/9 -- adapta la forma de
+     * `comparisons` (2.8.0.4, un objeto de trazabilidad completa por
+     * medición) a la forma más plana que espera
+     * `HydrometerBiasAnalysis.buildSummary()` (`error`/`brixReal`
+     * directos). Nunca recalcula nada -- `error` es exactamente
+     * `comparison.comparison.deltaBrix` ya calculado en 2.8.0.4.
+     */
+    _toAnalysisEntries(comparisons) {
+
+        return comparisons.map(c => ({
+
+            measurementId: c.measurementId,
+
+            date: c.date,
+
+            phase: c.phase,
+
+            error: c.comparison.deltaBrix,
+
+            brixReal: c.brixMate.value,
+
+            tableId: c.hydrometer.tableId,
+
+            tableVersion: c.hydrometer.tableVersion,
+
+            tableName: c.hydrometer.tableName
+
+        }));
+
+    }
+
+    /*
+     * Entrega 2.8.0.5, sección 10 -- `GET /api/hydrometer/audit`.
+     * Análisis histórico CROSS-BATCH: bias/mediana/MAE/desviación
+     * estándar, distribución de signos, agrupación por rango de Brix/
+     * fase/tabla-versión, evolución temporal, y clasificación del
+     * sesgo. Reutiliza EXACTAMENTE la misma lógica de comparación de
+     * 2.8.0.4 (`HydrometerAudit.evaluateComparability()`/
+     * `computeComparison()` vía `buildComparisons()` de arriba) --
+     * esta entrega nunca reimplementa ni reinterpreta qué es
+     * "comparable", solo agrega estadísticamente lo que 2.8.0.4 ya
+     * comparó individualmente. Sección 14 (obligatoria, igual que
+     * 2.8.0.4): SOLO LECTURA, nunca escribe ni recalcula un valor
+     * original.
+     */
+    async getHistoricalAnalysis(filters = {}) {
+
+        const { phase, batchId, tableId, tableVersion, from, to } =
+            filters;
+
+        const parsedFrom =
+            this._parseDate(from);
+
+        const parsedTo =
+            this._parseDate(to, { endOfDay: true });
+
+        const measurements =
+            await this.measurementRepository.findForAudit({
+
+                phase,
+
+                batchId,
+
+                tableId,
+
+                from: parsedFrom,
+
+                to: parsedTo
+
+            });
+
+        const tableLabelsById =
+            await this.resolveTableLabels(measurements);
+
+        const { comparisons, notComparable } =
+            this.buildComparisons(measurements, tableLabelsById, {});
+
+        // Sección 9 -- `tableVersion` no es una columna de
+        // `ProductionMeasurement` (solo `hydrometerConversionTableId`
+        // lo es), así que este filtro se aplica DESPUÉS de resolver la
+        // metadata de la tabla (mismo dato que ya se necesitaba para la
+        // trazabilidad de cada comparación) -- nunca requiere una
+        // segunda consulta.
+        const filteredComparisons =
+            tableVersion !== undefined && tableVersion !== null && tableVersion !== ""
+                ? comparisons.filter(c => c.hydrometer.tableVersion === Number(tableVersion))
+                : comparisons;
+
+        const analysis =
+            HydrometerBiasAnalysis.buildSummary(
+
+                this._toAnalysisEntries(filteredComparisons),
+
+                {
+
+                    minimumSampleSize: filters.minimumSampleSize,
+
+                    ranges: filters.ranges
+
+                }
+
+            );
+
+        return {
+
+            ...analysis,
+
+            notComparable: {
+
+                count: notComparable.length,
+
+                items: notComparable
+
+            },
+
+            // Sección 10 -- se ecoan los filtros REALMENTE aplicados,
+            // mismo criterio de transparencia que `thresholds` en
+            // `getAuditForBatch()` (2.8.0.4): el frontend nunca tiene
+            // que adivinar qué se filtró.
+            filters: {
+
+                phase: phase ?? null,
+
+                batchId: batchId ? Number(batchId) : null,
+
+                tableId: tableId ? Number(tableId) : null,
+
+                tableVersion: tableVersion ? Number(tableVersion) : null,
+
+                from: from ?? null,
+
+                to: to ?? null
 
             }
 

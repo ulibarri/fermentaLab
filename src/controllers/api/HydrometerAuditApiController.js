@@ -31,3 +31,43 @@ exports.auditForBatch = async (req, res) => {
     }
 
 };
+
+// Entrega 2.8.0.5, sección 10 -- GET /api/hydrometer/audit (a nivel
+// raíz, no anidado bajo un lote -- distinto de auditForBatch() de
+// arriba). Todos los filtros llegan como query params opcionales.
+exports.historicalAnalysis = async (req, res) => {
+
+    try {
+
+        const analysis =
+            await service.getHistoricalAnalysis({
+
+                phase: req.query.phase,
+
+                batchId: req.query.batchId,
+
+                tableId: req.query.tableId,
+
+                tableVersion: req.query.tableVersion,
+
+                from: req.query.from,
+
+                to: req.query.to
+
+            });
+
+        res.json({
+            success: true,
+            data: analysis
+        });
+
+    } catch (err) {
+
+        res.status(400).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};

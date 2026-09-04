@@ -10,6 +10,9 @@ const controller =
 const tablesController =
     require("../../controllers/api/HydrometerConversionTableApiController");
 
+const auditController =
+    require("../../controllers/api/HydrometerAuditApiController");
+
 const router =
     express.Router();
 
@@ -39,6 +42,11 @@ router.post("/tables/:id/validate", tablesController.validate);
 router.post("/tables/:id/activate", tablesController.activate);
 
 router.post("/tables/:id/simulate", tablesController.simulate);
+
+// Entrega 2.8.0.5, sección 10 -- análisis histórico cross-batch (Brix
+// derivado vs. BrixMate real). "/audit" no colisiona con ninguna ruta
+// existente en este archivo ("/convert", "/tables*").
+router.get("/audit", auditController.historicalAnalysis);
 
 module.exports =
     router;
