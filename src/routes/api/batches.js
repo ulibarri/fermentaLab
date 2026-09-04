@@ -14,6 +14,9 @@ const predictionController =
 const predictionAlertController =
     require("../../controllers/api/ProductionPredictionAlertApiController");
 
+const hydrometerAuditController =
+    require("../../controllers/api/HydrometerAuditApiController");
+
 const router =
     express.Router();
 
@@ -59,6 +62,13 @@ router.get("/:id/predictions/current", predictionController.currentPredictionFor
 router.get("/:id/prediction-alerts", predictionAlertController.history);
 
 router.get("/:id/prediction-alerts/active", predictionAlertController.active);
+
+// Entrega 2.8.0.4, sección 7 -- auditoría de hidrómetro por lote
+// (Brix derivado vía tabla del fabricante vs. Brix real de BrixMate).
+// Namespace de lote (no de tabla) -- mismo criterio que
+// "/:id/maturation"/"/:id/predictions" arriba: la lógica real vive en
+// HydrometerAuditService, este controller solo delega.
+router.get("/:id/hydrometer/audit", hydrometerAuditController.auditForBatch);
 
 module.exports =
     router;

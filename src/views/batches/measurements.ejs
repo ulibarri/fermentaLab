@@ -198,6 +198,26 @@
 
     </div>
 
+    <!-- Entrega 2.8.0.4 -- "Auditoría y comparación: mediciones
+         instrumentales vs. valores derivados". Compara, por medición,
+         el Brix DERIVADO por la conversión del hidrómetro (tabla del
+         fabricante) contra el Brix REAL medido por el Brixómetro
+         (BrixMate/LAFmate). Solo lectura -- nunca modifica ni
+         reemplaza ninguno de los dos valores (sección 3/14). -->
+    <div class="card mb-4">
+
+        <div class="card-header">
+            Auditoría de hidrómetro
+        </div>
+
+        <div class="card-body" id="hydrometerAudit">
+
+            <p class="text-muted mb-0">Cargando...</p>
+
+        </div>
+
+    </div>
+
     <h5 class="mb-3">Historial cronológico</h5>
 
     <table id="tblMeasurements" class="table table-striped table-hover">
@@ -250,6 +270,7 @@
 
 <%- include("measurementForm") %>
 <%- include("predictionModals") %>
+<%- include("hydrometerAuditModal") %>
 
     <script src="/js/api/api.js"></script>
     <script src="/js/ui/ui.js"></script>

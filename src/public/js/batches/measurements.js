@@ -216,6 +216,21 @@ class MeasurementsPage extends CrudPage {
 
             );
 
+        // Entrega 2.8.0.4 -- auditoría de hidrómetro (Brix derivado vs.
+        // BrixMate real). `hydrometerAudit` se cachea tras el primer
+        // load() para que el modal de detalle (sección 10) no dependa
+        // de una segunda consulta -- mismo criterio que
+        // `this.predictionHistory` de arriba.
+        this.hydrometerAudit =
+            null;
+
+        this.hydrometerAuditDetailModal =
+            bootstrap.Modal.getOrCreateInstance(
+
+                document.getElementById("modalHydrometerAuditDetail")
+
+            );
+
         // Entrega 2.7.0.3 -- alertas de desviación de la fermentación.
         this.predictionActiveAlert =
             null;
@@ -351,6 +366,8 @@ class MeasurementsPage extends CrudPage {
             await this.renderCurrentPrediction();
 
             await this.renderPredictionAlert();
+
+            await this.renderHydrometerAudit();
 
         }
 
@@ -2625,6 +2642,329 @@ class MeasurementsPage extends CrudPage {
             // Silencioso a propósito -- ver comentario de arriba.
 
         }
+
+    }
+
+    /*
+     * Entrega 2.8.0.4 -- "Auditoría de hidrómetro" (sección 10). Trae
+     * la comparación completa del lote (Brix derivado por conversión
+     * vs. Brix real de BrixMate) y la cachea en `this.hydrometerAudit`
+     * para que el modal de detalle (sección 10, "al seleccionar una
+     * medición") no dependa de una segunda petición -- mismo criterio
+     * que `renderCurrentPrediction()`/`this.predictionHistory` arriba.
+     * Falla en silencio dentro de su propia tarjeta (try/catch propio),
+     * nunca bloquea el resto de load().
+     */
+    async renderHydrometerAudit() {
+
+        const container =
+            document.getElementById("hydrometerAudit");
+
+        if (!container)
+            return;
+
+        try {
+
+            const audit =
+                await this.api.getHydrometerAudit();
+
+            this.hydrometerAudit =
+                audit;
+
+            this.renderHydrometerAuditBlock(audit);
+
+        }
+
+        catch (err) {
+
+            container.innerHTML =
+                `<p class="text-danger mb-0">No fue posible obtener la auditoría de hidrómetro: ${err.message}</p>`;
+
+        }
+
+    }
+
+    /*
+     * Sección 9 -- 🟢/🟡/🔴, tal como ya lo clasificó el backend
+     * (`HydrometerAudit.classifyStatus()`) contra los límites vigentes
+     * (`audit.thresholds`, expuestos por la API para que este archivo
+     * nunca tenga que conocerlos ni incrustarlos por su cuenta).
+     */
+    hydrometerAuditStatusEmoji(status) {
+
+        const emojis = {
+
+            OK: "🟢",
+
+            WARNING: "🟡",
+
+            HIGH: "🔴"
+
+        };
+
+        return emojis[status] || "⚪";
+
+    }
+
+    /*
+     * Sección 12 -- texto explicativo por razón de exclusión, siempre
+     * neutral ("No debe interpretarse como error del hidrómetro").
+     */
+    hydrometerNotComparableReasonLabel(reason) {
+
+        const labels = {
+
+            NO_DERIVED_BRIX: "sin Brix derivado por conversión (hidrómetro manual o sin lectura)",
+
+            NO_BRIX_MATE: "sin lectura de Brixómetro (BrixMate)",
+
+            INCOMPATIBLE_PHASE: "fase F2 (no aplica, el hidrómetro no se usa en F2)"
+
+        };
+
+        return labels[reason] || reason;
+
+    }
+
+    renderHydrometerAuditBlock(audit) {
+
+        const container =
+            document.getElementById("hydrometerAudit");
+
+        if (!container)
+            return;
+
+        const summary =
+            audit.summary || {};
+
+        const notComparableNote =
+            audit.notComparable && audit.notComparable.count > 0
+                ? `<p class="text-muted small mt-2 mb-0">${audit.notComparable.count} medición(es) no comparable(s) -- no se interpretan como error del hidrómetro.</p>`
+                : "";
+
+        if (!summary.comparisons || summary.comparisons === 0) {
+
+            container.innerHTML = `
+                <p class="text-muted mb-0">No se encontraron mediciones con Brix derivado (por conversión de hidrómetro) y BrixMate registrados en este lote para comparar.</p>
+                ${notComparableNote}
+            `;
+
+            return;
+
+        }
+
+        const relativeErrorLine =
+            summary.averageRelativeError === null || summary.averageRelativeError === undefined
+                ? `<li><strong>Error relativo promedio:</strong> N/D</li>`
+                : `<li><strong>Error relativo promedio:</strong> ${summary.averageRelativeError}%</li>`;
+
+        const biasSign =
+            summary.averageBias > 0 ? "+" : "";
+
+        const rows =
+            (audit.comparisons || [])
+
+                .map(c => {
+
+                    const deltaSign =
+                        c.comparison.deltaBrix > 0 ? "+" : "";
+
+                    return `
+
+                        <tr style="cursor:pointer" data-measurement-id="${c.measurementId}">
+
+                            <td>${this.formatDate(c.date)}</td>
+
+                            <td>${this.formatValue(c.hydrometer.derivedBrix)}</td>
+
+                            <td>${this.formatValue(c.brixMate.value)}</td>
+
+                            <td>${deltaSign}${c.comparison.deltaBrix}</td>
+
+                            <td class="text-center">${this.hydrometerAuditStatusEmoji(c.comparison.status)}</td>
+
+                        </tr>
+
+                    `;
+
+                })
+
+                .join("");
+
+        container.innerHTML = `
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Comparaciones encontradas:</strong> ${summary.comparisons}</li>
+
+                <li><strong>Error absoluto promedio:</strong> ${this.formatValue(summary.averageAbsoluteError)} °Bx</li>
+
+                ${relativeErrorLine}
+
+                <li><strong>Sesgo promedio:</strong> ${biasSign}${summary.averageBias} °Bx</li>
+
+                <li><strong>Error máximo / mínimo:</strong> ${this.formatValue(summary.maxAbsoluteError)} / ${this.formatValue(summary.minAbsoluteError)} °Bx</li>
+
+            </ul>
+
+            <table class="table table-sm table-hover mb-0">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Fecha</th>
+
+                        <th>Derivado</th>
+
+                        <th>BrixMate</th>
+
+                        <th>ΔBrix</th>
+
+                        <th class="text-center">Estado</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    ${rows}
+
+                </tbody>
+
+            </table>
+
+            <p class="text-muted small mt-2 mb-0">Haz clic en una fila para ver el detalle completo de esa comparación.</p>
+
+            ${notComparableNote}
+
+        `;
+
+        container
+
+            .querySelectorAll("tr[data-measurement-id]")
+
+            .forEach(row => {
+
+                row.addEventListener(
+
+                    "click",
+
+                    () => this.openHydrometerAuditDetail(Number(row.dataset.measurementId))
+
+                );
+
+            });
+
+    }
+
+    /*
+     * Sección 10 -- "Al seleccionar una medición: Detalle de
+     * comparación". Reutiliza `this.hydrometerAudit` ya cargado por
+     * renderHydrometerAudit(), sin volver a pedirlo a la API.
+     */
+    openHydrometerAuditDetail(measurementId) {
+
+        const body =
+            document.getElementById("hydrometerAuditDetailBody");
+
+        if (!body)
+            return;
+
+        const comparison =
+            ((this.hydrometerAudit || {}).comparisons || [])
+                .find(c => c.measurementId === measurementId);
+
+        if (!comparison) {
+
+            body.innerHTML =
+                `<p class="text-danger mb-0">No fue posible encontrar el detalle de esta comparación.</p>`;
+
+            this.hydrometerAuditDetailModal.show();
+
+            return;
+
+        }
+
+        this.renderHydrometerAuditDetailBody(comparison);
+
+        this.hydrometerAuditDetailModal.show();
+
+    }
+
+    renderHydrometerAuditDetailBody(comparison) {
+
+        const body =
+            document.getElementById("hydrometerAuditDetailBody");
+
+        if (!body)
+            return;
+
+        const hydrometer =
+            comparison.hydrometer || {};
+
+        const methodLabel =
+            hydrometer.method === "TABLE_EXACT"
+                ? "Tabla del fabricante (valor exacto)"
+                : hydrometer.method === "INTERPOLATED"
+                    ? "Interpolación lineal"
+                    : (hydrometer.method || "—");
+
+        const tableLabel =
+            hydrometer.tableName
+                ? `${hydrometer.tableName} v${hydrometer.tableVersion}${hydrometer.tableStatus && hydrometer.tableStatus !== "ACTIVE" ? ` (${hydrometer.tableStatus})` : ""}`
+                : "—";
+
+        const deltaSign =
+            comparison.comparison.deltaBrix > 0 ? "+" : "";
+
+        const relativeErrorText =
+            comparison.comparison.relativeError === null || comparison.comparison.relativeError === undefined
+                ? "N/D"
+                : `${comparison.comparison.relativeError}%`;
+
+        body.innerHTML = `
+
+            <p class="fw-bold mb-1">Hidrómetro</p>
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Escala:</strong> ${this.formatValue(hydrometer.scale)}</li>
+
+                <li><strong>Valor leído:</strong> ${this.formatValue(hydrometer.value)}</li>
+
+                <li><strong>Brix derivado:</strong> ${this.formatValue(hydrometer.derivedBrix)} °Bx</li>
+
+                <li><strong>Método:</strong> ${methodLabel}</li>
+
+                <li><strong>Tabla:</strong> ${tableLabel}</li>
+
+            </ul>
+
+            <p class="fw-bold mb-1">BrixMate</p>
+
+            <ul class="list-unstyled small mb-3">
+
+                <li><strong>Valor medido:</strong> ${this.formatValue(comparison.brixMate.value)} °Bx</li>
+
+            </ul>
+
+            <p class="fw-bold mb-1">Comparación</p>
+
+            <ul class="list-unstyled small mb-0">
+
+                <li><strong>Diferencia (ΔBrix):</strong> ${deltaSign}${comparison.comparison.deltaBrix} °Bx</li>
+
+                <li><strong>Error absoluto:</strong> ${comparison.comparison.absoluteError} °Bx</li>
+
+                <li><strong>Error relativo:</strong> ${relativeErrorText}</li>
+
+                <li><strong>Estado:</strong> ${this.hydrometerAuditStatusEmoji(comparison.comparison.status)}</li>
+
+            </ul>
+
+        `;
 
     }
 

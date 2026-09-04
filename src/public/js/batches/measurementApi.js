@@ -42,6 +42,22 @@ class MeasurementApi {
 
     }
 
+    // Entrega 2.8.0.4, sección 7 -- auditoría de hidrómetro por lote
+    // (Brix derivado vía tabla del fabricante vs. Brix real de
+    // BrixMate). Mismo molde que getMaturation()/getMaturationEvaluation()
+    // de arriba -- solo lectura, nunca envía ningún payload.
+    async getHydrometerAudit() {
+
+        const response = await Api.get(
+
+            `/api/batches/${this.batchId}/hydrometer/audit`
+
+        );
+
+        return response.data;
+
+    }
+
     async create(entity) {
 
         const response = await Api.post(
